@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>DogEarth · 실제 지도 테스트</title>
-<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='14';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
+<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='15';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
@@ -250,7 +250,7 @@ function showSummary(w){
     <div><b>${fmtPace(w.moving,w.dist)}</b><span>평균 페이스</span></div>
     <div><b>${Math.round(w.dist/STEP).toLocaleString()}</b><span>걸음 · 🐾 ${Math.round(w.dist/STRIDE*4).toLocaleString()}</span></div>
   </div>
-  ${w.clicks&&w.clicks.length?`<div class="note" style="margin:-4px 0 10px;font-size:13px">⭐ 오늘 칭찬 ${w.clicks.length}번</div>`:''}
+  ${w.events&&w.events.length&&window.DEX&&DEX.evSummary?`<div style="margin:-4px 0 12px;font-size:14px;color:var(--sub);text-align:left">${DEX.evSummary(w.events)}</div>`:''}
   <div class="row"><button class="btn sec" onclick="DE.gpx('${w.id}')">GPX 저장</button><button class="btn" onclick="DE.close()">확인</button></div>`);
   showWalk(w,false);
 }
@@ -330,7 +330,7 @@ render();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="dogkit.js?v=13"></script>
-<script src="extras-ml.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<script src="extras-ml.js?v=15"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

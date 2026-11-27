@@ -123,9 +123,9 @@ let clicks=[];
  b.onpointercancel=()=>clearTimeout(tm);b.oncontextmenu=e=>e.preventDefault()})();
 const starMk=[];
 function log(k){const f=DEX.lastFix;if(!f)return;clicks.push([+f[0].toFixed(6),+f[1].toFixed(6),Date.now(),k]);$("clk").animate([{transform:"scale(1)"},{transform:"scale(1.12)"},{transform:"scale(1)"}],{duration:200})}
-DEX.onStart=()=>{clicks=[];$("clk").hidden=!DEX.walkTrain;SND.squeak()};
+DEX.onStart=()=>{clicks=[];$("clk").hidden=true;SND.squeak()};
 DEX.onEnd=w=>{$("clk").hidden=true;if(clicks.length)w.clicks=clicks.slice(0,300)};
-DEX.walkTrain=(()=>{try{return JSON.parse(localStorage.getItem("de.walkTrain")||"false")}catch(x){return false}})();if(DEX.cur)$("clk").hidden=!DEX.walkTrain;
+DEX.walkTrain=(()=>{try{return JSON.parse(localStorage.getItem("de.walkTrain")||"false")}catch(x){return false}})();
 
 /* ---------- 소리 패드 · 트레이닝 ---------- */
 const CMDS=[["sit","앉아"],["stay","기다려"],["come","이리 와"],["paw","손"],["down","엎드려"],["heel","옆에"]];
