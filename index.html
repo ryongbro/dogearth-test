@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>DogEarth · 실제 지도 테스트</title>
-<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='9';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
+<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='10';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
@@ -40,7 +40,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 .btn.go{background:var(--green)}
 .note{display:none;font-size:11.5px;color:var(--red);margin-top:6px;text-align:center;line-height:1.45}.note.show{display:block}
 body.full .panel{left:auto;right:10px;padding:8px 14px;border-radius:14px;cursor:pointer}body.full .row,body.full .st{display:none}body.full .stats{display:block}body.full .big{font-size:18px}body.full .big::after{content:" ▲";font-size:11px;color:var(--sub)}
-@media (max-width:430px){.top{gap:6px}.ibtn{width:36px;height:36px;font-size:16px}.brand{padding:7px 10px;font-size:15px}#gtxt{display:none}.gps{padding:9px}}
+@media (max-width:430px){.brand{display:none}.top{gap:6px}.ibtn{width:36px;height:36px;font-size:16px}.brand{padding:7px 10px;font-size:15px}#gtxt{display:none}.gps{padding:9px}}
 .ibtn.on{background:#2D55E8;color:#fff;border-color:#2D55E8}
 .sheet{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.5);display:none}
 .sheet.on{display:block}
@@ -276,7 +276,7 @@ function gpx(id){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([x],{type:'application/gpx+xml'}));
   a.download=`dogearth-${dayKey(w.start)}-${hm(w.start).replace(':','')}.gpx`;document.body.appendChild(a);a.click();a.remove();
 }
-window.DEX=window.DEX||{};Object.assign(DEX,{map,LL,hav,get cur(){return cur},get paused(){return paused},get lastFix(){return lastFix},get follow(){return follow},set follow(v){follow=v},toast,openSheet,walks:()=>walks,showWalk});
+window.DEX=window.DEX||{};Object.defineProperties(DEX,Object.getOwnPropertyDescriptors({map,LL,hav,setNav:(m,say)=>setNav(m,say),get cur(){return cur},get paused(){return paused},get lastFix(){return lastFix},get follow(){return follow},set follow(v){follow=v},toast,openSheet,walks:()=>walks,showWalk}));
 window.DE={
   close:()=>{$('sheet').classList.remove('on')},
   view:id=>{const w=walks.find(x=>x.id===id);if(w){$('sheet').classList.remove('on');showWalk(w)}},
@@ -324,6 +324,6 @@ render();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="dogkit.js?v=9"></script>
-<script src="extras-ml.js?v=9"></script>
+<script src="extras-ml.js?v=10"></script>
 </body>
 </html>

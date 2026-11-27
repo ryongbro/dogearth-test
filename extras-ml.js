@@ -167,3 +167,68 @@ function openPad(tab){tab=tab||"train";const all=ld(TK,{}),tr=all[tday()]||{};
  document.querySelectorAll("#sheetIn [data-b]").forEach(b=>b.onclick=()=>SND.bark(b.dataset.b))}
 $("bPad").onclick=()=>openPad();
 })();
+
+/* ---------- 만날 장소 · 걸어서 길안내 ---------- */
+(()=>{
+const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const map=DEX.map,toast=m=>DEX.toast(m);
+document.head.insertAdjacentHTML("beforeend",`<style>
+.navc{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 60px);z-index:610;max-width:460px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 28px rgba(0,0,0,.16);overflow:hidden}
+.navc .nx{display:flex;gap:12px;align-items:center;padding:12px 14px;background:#2fb36d;color:#fff}.navc .nx .ar{font-size:30px;line-height:1;width:36px;text-align:center}.navc .nx b{display:block;font-size:20px;letter-spacing:-.3px}.navc .nx span{font-size:13px;opacity:.92}
+.navc .rs{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:13px;color:var(--sub)}.navc .rs b{color:var(--tx);font-size:14px}
+.navc .rs button,.navc .ext a{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 9px;font:600 12px -apple-system,system-ui,sans-serif;color:var(--tx);text-decoration:none}
+.navc .ext{display:flex;gap:6px;padding:0 12px 10px}
+.sres{display:flex;flex-direction:column}.sres button{text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:11px 2px;font:15px -apple-system,system-ui,sans-serif;color:var(--tx)}.sres small{display:block;color:var(--sub);font-size:12px;margin-top:2px}
+.flag{font-size:28px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));transform:translateY(-12px)}
+.pickhint{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:620;background:#141619;color:#fff;padding:10px 14px;border-radius:12px;font-size:13.5px}
+</style>`);
+$("bHist").insertAdjacentHTML("beforebegin",`<button class="ibtn" id="bGo" title="만날 장소 길안내">📍</button>`);
+document.body.insertAdjacentHTML("beforeend",`<div id="navBox"></div>`);
+const ready=f=>{if(map.isStyleLoaded())f();else map.once("load",f)};
+ready(()=>{map.addSource("navr",{type:"geojson",data:{type:"FeatureCollection",features:[]}});map.addLayer({id:"navr-case",type:"line",source:"navr",layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":"#1d7a4a","line-width":9,"line-opacity":.35}},"live");map.addLayer({id:"navr",type:"line",source:"navr",layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":"#2fb36d","line-width":6}},"live")});
+let N=null,flag=null,voice=true;
+const here=()=>DEX.lastFix?[DEX.lastFix[0],DEX.lastFix[1]]:null;
+function openGo(){const h=here();DEX.openSheet(`<h3>📍 만날 장소로 걸어가기</h3><input class="inp" id="gq" placeholder="장소 이름 (예: 성북천, 중앙공원 입구)" autocomplete="off"><div class="row" style="margin-top:8px"><button class="btn sec" id="gpick">지도에서 고르기</button><button class="btn" id="gs">검색</button></div><div class="sres" id="gr"></div>
+ <div class="note" style="display:block;color:var(--sub);text-align:left;margin-top:10px">걷기 경로는 OpenStreetMap 기반 무료 경로 서버로 계산해요. 정확한 안내가 필요하면 안내 중 화면에서 네이버·카카오·애플 지도로 바로 넘길 수 있어요.</div>`);
+ const go=async()=>{const q=$("gq").value.trim();if(!q)return;$("gr").innerHTML='<div class="note" style="display:block;color:var(--sub)">찾는 중…</div>';
+  let u=`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&accept-language=ko&countrycodes=kr&q=${encodeURIComponent(q)}`;if(h){const d=.05;u+=`&viewbox=${h[1]-d},${h[0]+d},${h[1]+d},${h[0]-d}`}
+  try{const r=await (await fetch(u)).json();const list=r.map(x=>({lat:+x.lat,lng:+x.lon,name:x.name||x.display_name.split(",")[0],addr:x.display_name.split(",").slice(1,4).join(",")})).sort((a,b)=>h?DEX.hav(h,[a.lat,a.lng])-DEX.hav(h,[b.lat,b.lng]):0);
+   $("gr").innerHTML=list.length?list.map((x,i)=>`<button data-i="${i}">${esc(x.name)}<small>${esc(x.addr)}${h?` · ${fmtD(DEX.hav(h,[x.lat,x.lng]))}`:""}</small></button>`).join(""):'<div class="note" style="display:block;color:var(--sub)">결과가 없어요. 지도에서 직접 골라 주세요.</div>';
+   $("gr").querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{const x=list[+b.dataset.i];$("sheet").classList.remove("on");startNav(x)})}catch(e){$("gr").innerHTML='<div class="note show">검색 서버에 연결하지 못했어요.</div>'}};
+ $("gs").onclick=go;$("gq").onkeydown=e=>{if(e.key==="Enter")go()};setTimeout(()=>$("gq").focus(),200);
+ $("gpick").onclick=()=>{$("sheet").classList.remove("on");DEX.follow=false;document.body.insertAdjacentHTML("beforeend",'<div class="pickhint" id="ph">만날 장소를 지도에서 눌러 주세요</div>');map.once("click",e=>{$("ph")&&$("ph").remove();startNav({lat:e.lngLat.lat,lng:e.lngLat.lng,name:"고른 장소"})})}}
+$("bGo").onclick=()=>N?stopNav(true):openGo();
+const fmtD=m=>m>=1000?(m/1000).toFixed(1)+"km":Math.round(m/10)*10+"m";
+const ARW={left:"⬅️","slight left":"↖️","sharp left":"↩️",right:"➡️","slight right":"↗️","sharp right":"↪️",straight:"⬆️",uturn:"🔄"};
+function instr(s){const m=s.maneuver,mod=m.modifier||"straight",dir={left:"왼쪽으로",right:"오른쪽으로","slight left":"왼쪽 방향으로","slight right":"오른쪽 방향으로","sharp left":"왼쪽으로 크게","sharp right":"오른쪽으로 크게",straight:"직진",uturn:"유턴"}[mod]||"직진";
+ const nm=s.name?`${s.name} 쪽 `:"";if(m.type==="arrive")return["🚩","목적지 도착"];if(m.type==="depart")return["⬆️",`${nm}출발`];if(m.type==="roundabout"||m.type==="rotary")return["🔄","회전 교차로 진입"];
+ return[ARW[mod]||"⬆️",mod==="straight"?`${nm}직진`:`${nm}${dir} 도세요`.replace("직진 도세요","직진")]}
+async function route(from,to){const u=`https://routing.openstreetmap.de/routed-foot/route/v1/foot/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson&steps=true`;const r=await (await fetch(u)).json();if(!r.routes||!r.routes[0])throw 0;return r.routes[0]}
+async function startNav(dest){const h=here();if(!h){toast("현재 위치를 아직 못 찾았어요");return}
+ if(flag)flag.remove();const el=document.createElement("div");el.className="flag";el.textContent="🚩";flag=new maplibregl.Marker({element:el,anchor:"bottom"}).setLngLat([dest.lng,dest.lat]).addTo(map);
+ N={dest,steps:[],line:[],said:{},rerouteAt:0};toast("걷기 경로를 찾는 중…");await reroute(true);try{DEX.setNav&&DEX.setNav("head",false)}catch(e){}}
+async function reroute(first){if(!N)return;const h=here();N.rerouteAt=Date.now();try{const r=await route(h,[N.dest.lat,N.dest.lng]);N.line=r.geometry.coordinates.map(c=>[c[1],c[0]]);N.steps=r.legs[0].steps;N.total=r.distance;N.said={};
+  map.getSource("navr")&&map.getSource("navr").setData({type:"FeatureCollection",features:[{type:"Feature",geometry:r.geometry,properties:{}}]});
+  if(first){const pts=N.line;let a=[1e9,1e9],b=[-1e9,-1e9];pts.forEach(p=>{a[0]=Math.min(a[0],p[0]);a[1]=Math.min(a[1],p[1]);b[0]=Math.max(b[0],p[0]);b[1]=Math.max(b[1],p[1])});DEX.follow=false;map.fitBounds([[a[1],a[0]],[b[1],b[0]]],{padding:{top:220,bottom:200,left:50,right:60},bearing:0,pitch:30,duration:800});setTimeout(()=>{if(N)DEX.follow=true},2600)}
+  else toast("경로를 다시 찾았어요");update()}catch(e){toast("경로 서버에 연결하지 못했어요. 지도 앱으로 안내받아 주세요.");update(true)}}
+function nearestIdx(p){let bi=0,bd=1e9;N.line.forEach((q,i)=>{const d=DEX.hav(p,q);if(d<bd){bd=d;bi=i}});return[bi,bd]}
+function update(noRoute){if(!N)return;const h=here();if(!h)return;let remain=DEX.hav(h,[N.dest.lat,N.dest.lng]),nextS=null,toNext=0,off=0;
+ if(N.line.length>1&&!noRoute){const [i,d]=nearestIdx(h);off=d;remain=d;for(let k=i;k<N.line.length-1;k++)remain+=DEX.hav(N.line[k],N.line[k+1]);
+  for(const s of N.steps){const loc=[s.maneuver.location[1],s.maneuver.location[0]];const [si]=nearestIdx(loc);if(si>i||(s.maneuver.type==="arrive")){nextS=s;toNext=DEX.hav(h,loc);break}}
+  if(off>35&&Date.now()-N.rerouteAt>15000){reroute(false);return}}
+ const dst=DEX.hav(h,[N.dest.lat,N.dest.lng]);if(dst<20){arrive();return}
+ const [ar,tx]=nextS?instr(nextS):["🚩","목적지 방향으로"];const mins=Math.max(1,Math.round(remain/1.25/60));
+ if(nextS&&toNext<25&&!N.said[nextS.maneuver.location.join()]&&voice){N.said[nextS.maneuver.location.join()]=1;say(`${tx}`)}
+ $("navBox").innerHTML=`<div class="navc"><div class="nx"><div class="ar">${ar}</div><div style="flex:1"><b>${nextS?fmtD(toNext)+" 앞":""} ${esc(tx)}</b><span>🚩 ${esc(N.dest.name)}</span></div></div>
+ <div class="rs"><span style="flex:1">남은 거리 <b>${fmtD(remain)}</b> · 걸어서 약 <b>${mins}분</b>${noRoute?" (직선)":""}</span><button id="nv">${voice?"🔊":"🔇"}</button><button id="nx">종료</button></div>
+ <div class="ext"><a href="#" id="xN">네이버지도</a><a href="#" id="xK">카카오맵</a><a href="https://maps.apple.com/?daddr=${N.dest.lat},${N.dest.lng}&dirflg=w" target="_blank" rel="noopener">애플 지도</a></div></div>`;
+ $("nx").onclick=()=>stopNav(true);$("nv").onclick=()=>{voice=!voice;update()};
+ const nm=encodeURIComponent(N.dest.name);$("xN").onclick=e=>{e.preventDefault();openApp(`nmap://route/walk?dlat=${N.dest.lat}&dlng=${N.dest.lng}&dname=${nm}&appname=io.github.ryongbro.dogearth`,`https://map.naver.com/p/search/${nm}`)};
+ $("xK").onclick=e=>{e.preventDefault();openApp(`kakaomap://route?ep=${N.dest.lat},${N.dest.lng}&by=FOOT`,`https://map.kakao.com/link/to/${nm},${N.dest.lat},${N.dest.lng}`)}}
+function openApp(scheme,web){const t=Date.now();location.href=scheme;setTimeout(()=>{if(Date.now()-t<2200&&document.visibilityState==="visible")window.open(web,"_blank")},1500)}
+function say(t){try{const u=new SpeechSynthesisUtterance(t);u.lang="ko-KR";speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
+function arrive(){const n=N.dest.name;stopNav(false);toast(`🚩 ${n}에 도착했어요`);say("목적지에 도착했어요");try{navigator.vibrate&&navigator.vibrate([60,60,60])}catch(e){}}
+function stopNav(msg){N=null;$("navBox").innerHTML="";if(flag){flag.remove();flag=null}map.getSource("navr")&&map.getSource("navr").setData({type:"FeatureCollection",features:[]});if(msg)toast("길안내를 종료했어요")}
+const _fix=DEX.onFix;DEX.onFix=(a,b,c,d)=>{_fix&&_fix(a,b,c,d);if(N)update()};
+})();
+if(DEX.lastFix){const f=DEX.lastFix;DEX.onFix(f[0],f[1],10,f[2])}
