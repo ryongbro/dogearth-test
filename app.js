@@ -281,8 +281,12 @@ $("sheet").addEventListener("click",e=>{if(e.target.id==="sheet"&&!ld("de.consen
 
 /* ---------- 산책 중 배변 기록 버튼 · 시작 ---------- */
 const _st=DEX.onStart;DEX.onStart=()=>{_st&&_st();addWalkPoop()};
-function addWalkPoop(){if($("wpoop"))return;const c=$("clk");c.insertAdjacentHTML("afterend",`<button class="clk" id="wpoop" style="bottom:calc(env(safe-area-inset-bottom) + 330px);width:52px;height:52px;background:#fff;color:#141619;border:1px solid var(--line);font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,.15)">💩</button>`);$("wpoop").onclick=()=>DEX.addPoop()}
-const _en=DEX.onEnd;DEX.onEnd=w=>{_en&&_en(w);$("wpoop")&&$("wpoop").remove()};
+const MB="width:52px;height:52px;background:#fff;color:#141619;border:1px solid var(--line);font-size:22px;box-shadow:0 4px 12px rgba(0,0,0,.15)";
+function addWalkPoop(){if($("wpoop"))return;const c=$("clk");c.insertAdjacentHTML("afterend",`<button class="clk" id="wpoop" style="bottom:calc(env(safe-area-inset-bottom) + 160px);${MB}">💩</button><button class="clk" id="wtrain" style="bottom:calc(env(safe-area-inset-bottom) + 222px);${MB}" title="산책 중 훈련">🎓</button>`);
+ $("wpoop").onclick=()=>DEX.addPoop();
+ const sync=()=>{$("clk").hidden=!DEX.walkTrain;$("wtrain").style.background=DEX.walkTrain?"#E0782A":"#fff";$("clk").style.bottom="calc(env(safe-area-inset-bottom) + 290px)"};sync();
+ $("wtrain").onclick=()=>{DEX.walkTrain=!DEX.walkTrain;sv("de.walkTrain",DEX.walkTrain);sync();toast(DEX.walkTrain?"산책 중 훈련 켜짐 — 잘한 순간 딸깍, 길게 누르면 휘슬":"산책 중 훈련 꺼짐")}}
+const _en=DEX.onEnd;DEX.onEnd=w=>{_en&&_en(w);$("wpoop")&&$("wpoop").remove();$("wtrain")&&$("wtrain").remove()};
 if(DEX.cur)addWalkPoop();
 renderLost();
 })();

@@ -122,11 +122,10 @@ let clicks=[];
  b.onpointerup=e=>{e.preventDefault();clearTimeout(tm);if(longed)return;const n=Date.now();if(n-last<320){last=0;SND.praise();log("praise");return}last=n;SND.click();log("click")};
  b.onpointercancel=()=>clearTimeout(tm);b.oncontextmenu=e=>e.preventDefault()})();
 const starMk=[];
-function log(k){const f=DEX.lastFix;if(!f)return;clicks.push([+f[0].toFixed(6),+f[1].toFixed(6),Date.now(),k]);const el=document.createElement("div");el.className="star";el.textContent=k==="praise"?"💛":k==="whistle"?"🎵":"⭐";starMk.push(new maplibregl.Marker({element:el}).setLngLat([f[1],f[0]]).addTo(map));
- $("clk").animate([{transform:"scale(1)"},{transform:"scale(1.12)"},{transform:"scale(1)"}],{duration:200})}
-DEX.onStart=()=>{clicks=[];starMk.splice(0).forEach(m=>m.remove());$("clk").hidden=false;SND.squeak()};
+function log(k){const f=DEX.lastFix;if(!f)return;clicks.push([+f[0].toFixed(6),+f[1].toFixed(6),Date.now(),k]);$("clk").animate([{transform:"scale(1)"},{transform:"scale(1.12)"},{transform:"scale(1)"}],{duration:200})}
+DEX.onStart=()=>{clicks=[];$("clk").hidden=!DEX.walkTrain;SND.squeak()};
 DEX.onEnd=w=>{$("clk").hidden=true;if(clicks.length)w.clicks=clicks.slice(0,300)};
-if(DEX.cur)$("clk").hidden=false;
+DEX.walkTrain=(()=>{try{return JSON.parse(localStorage.getItem("de.walkTrain")||"false")}catch(x){return false}})();if(DEX.cur)$("clk").hidden=!DEX.walkTrain;
 
 /* ---------- 소리 패드 · 트레이닝 ---------- */
 const CMDS=[["sit","앉아"],["stay","기다려"],["come","이리 와"],["paw","손"],["down","엎드려"],["heel","옆에"]];
