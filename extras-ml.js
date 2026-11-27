@@ -228,7 +228,75 @@ function update(noRoute){if(!N)return;const h=here();if(!h)return;let remain=DEX
 function openApp(scheme,web){const t=Date.now();location.href=scheme;setTimeout(()=>{if(Date.now()-t<2200&&document.visibilityState==="visible")window.open(web,"_blank")},1500)}
 function say(t){try{const u=new SpeechSynthesisUtterance(t);u.lang="ko-KR";speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
 function arrive(){const n=N.dest.name;stopNav(false);toast(`🚩 ${n}에 도착했어요`);say("목적지에 도착했어요");try{navigator.vibrate&&navigator.vibrate([60,60,60])}catch(e){}}
+DEX.startNav=d=>startNav(d);
 function stopNav(msg){N=null;$("navBox").innerHTML="";if(flag){flag.remove();flag=null}map.getSource("navr")&&map.getSource("navr").setData({type:"FeatureCollection",features:[]});if(msg)toast("길안내를 종료했어요")}
 const _fix=DEX.onFix;DEX.onFix=(a,b,c,d)=>{_fix&&_fix(a,b,c,d);if(N)update()};
+})();
+
+/* ---------- 녹지 강조 · 반려견 장소 표시 ---------- */
+(()=>{
+const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const map=DEX.map,toast=m=>DEX.toast(m),ld=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+// 1) 녹지 더 잘 보이게
+const ready=f=>{if(map.isStyleLoaded())f();else map.once("load",f)};
+ready(()=>{const P=(id,k,v)=>{try{if(map.getLayer(id))map.setPaintProperty(id,k,v)}catch(e){}};
+ P("park","fill-color","#bfe3a6");P("park","fill-opacity",.85);P("park","fill-outline-color","#6dbb5a");
+ P("park_outline","line-color","#7cc46a");P("park_outline","line-width",1.6);P("park_outline","line-dasharray",[1,0]);
+ P("landcover_grass","fill-color","#bfe3a6");P("landcover_grass","fill-opacity",.75);
+ P("landcover_wood","fill-color","#a5d68e");P("landcover_wood","fill-opacity",.7);
+ P("landuse_pitch","fill-color","#cfe7b8");P("landuse_cemetery","fill-color","#cfe2bd");
+ // 반려견 놀이터 면적 강조용
+ map.addSource("dogarea",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+ map.addLayer({id:"dogarea",type:"fill",source:"dogarea",paint:{"fill-color":"#6cc24a","fill-opacity":.45,"fill-outline-color":"#3f9a2b"}},"building-3d")});
+// 2) 반려견 장소
+const CAT={dogpark:{n:"반려견 놀이터",i:"🐕",c:"#3f9a2b",q:'nwr["leisure"="dog_park"]'},
+ vet:{n:"동물병원",i:"🏥",c:"#e5484d",q:'nwr["amenity"="veterinary"]'},
+ pet:{n:"펫샵·간식",i:"🦴",c:"#E0782A",q:'nwr["shop"="pet"]'},
+ groom:{n:"미용",i:"✂️",c:"#8e6cc9",q:'nwr["shop"="pet_grooming"]'},
+ hotel:{n:"호텔·유치원",i:"🏠",c:"#2D55E8",q:'nwr["amenity"="animal_boarding"]'},
+ cafe:{n:"동반 카페",i:"☕",c:"#8a5a33",q:'nwr["amenity"~"cafe|restaurant"]["dog"~"yes|leashed|outside"]'},
+ shelter:{n:"보호소",i:"💛",c:"#c99a14",q:'nwr["amenity"="animal_shelter"]'}};
+let on=ld("de.pois",Object.fromEntries(Object.keys(CAT).map(k=>[k,true]))),show=ld("de.poiShow",true),pois=[],mks=[],lastQ=null,loading=false;
+document.head.insertAdjacentHTML("beforeend",`<style>
+.pm{display:flex;align-items:center;gap:4px;padding:3px 8px 3px 4px;border-radius:999px;background:#fff;border:2px solid var(--c);box-shadow:0 2px 6px rgba(0,0,0,.18);font:600 11.5px -apple-system,system-ui,sans-serif;color:#141619;white-space:nowrap;max-width:140px;cursor:pointer}
+.pm i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--c);display:grid;place-items:center;font-size:12px}.pm span{overflow:hidden;text-overflow:ellipsis}
+.pm.sm span{display:none}.pm.sm{padding:3px}
+.poibar{position:fixed;left:12px;top:calc(env(safe-area-inset-top) + 92px);z-index:520;display:flex;flex-direction:column;gap:6px}
+.poibar button{border:1px solid var(--line);background:rgba(255,255,255,.95);border-radius:12px;padding:7px 10px;font:600 12.5px -apple-system,system-ui,sans-serif;color:var(--tx);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.poibar button.on{background:#2fb36d;color:#fff;border-color:#2fb36d}
+</style>`);
+document.body.insertAdjacentHTML("beforeend",`<div class="poibar"><button id="poiT" class="${show?"on":""}">🐾 반려견 장소</button></div>`);
+$("poiT").onclick=()=>{if(!show){show=true;sv("de.poiShow",true);$("poiT").classList.add("on");fetchPois(true)}else openFilter()};
+function openFilter(){DEX.openSheet(`<h3>🐾 반려견 장소</h3><div class="chips" style="display:flex;flex-wrap:wrap;gap:6px">${Object.entries(CAT).map(([k,c])=>`<button data-c="${k}" style="border:2px solid ${c.c};border-radius:999px;padding:8px 12px;background:${on[k]?c.c:"#fff"};color:${on[k]?"#fff":"#141619"};font:600 13px -apple-system,system-ui,sans-serif">${c.i} ${c.n} ${pois.filter(p=>p.k===k).length||""}</button>`).join("")}</div>
+ <div class="row"><button class="btn sec" id="poff">지도에서 숨기기</button><button class="btn" id="pre">이 주변 다시 찾기</button></div>
+ <div class="note" style="display:block;color:var(--sub);text-align:left">OpenStreetMap에 등록된 장소만 보여요. 국내는 빠진 곳이 많아, 정식 앱에서는 네이버·카카오 장소 검색과 이용자 제보로 채울 예정이에요.</div>`);
+ document.querySelectorAll("#sheetIn [data-c]").forEach(b=>b.onclick=()=>{on[b.dataset.c]=!on[b.dataset.c];sv("de.pois",on);draw();openFilter()});
+ $("poff").onclick=()=>{show=false;sv("de.poiShow",false);$("poiT").classList.remove("on");draw();$("sheet").classList.remove("on")};
+ $("pre").onclick=()=>{$("sheet").classList.remove("on");fetchPois(true)}}
+const EPS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+async function fetchPois(force){if(!show||loading)return;const c=map.getCenter(),ctr=[c.lat,c.lng];if(!force&&lastQ&&DEX.hav(lastQ,ctr)<700)return;if(map.getZoom()<13.5&&!force)return;
+ loading=true;lastQ=ctr;const d=.016,bb=`${(ctr[0]-d).toFixed(4)},${(ctr[1]-d*1.25).toFixed(4)},${(ctr[0]+d).toFixed(4)},${(ctr[1]+d*1.25).toFixed(4)}`;
+ const q=`[out:json][timeout:20];(${Object.values(CAT).map(x=>x.q+`(${bb});`).join("")});out center tags geom(${bb});`;
+ if(force)toast("주변 반려견 장소를 찾는 중…");
+ for(const ep of EPS){try{const r=await fetch(ep,{method:"POST",body:"data="+encodeURIComponent(q),headers:{"Content-Type":"application/x-www-form-urlencoded"}});if(!r.ok)continue;const j=await r.json();
+   const seen=new Set(pois.map(p=>p.id));const areas=[];
+   j.elements.forEach(e=>{const t=e.tags||{};const k=t.leisure==="dog_park"?"dogpark":t.amenity==="veterinary"?"vet":t.shop==="pet"?"pet":t.shop==="pet_grooming"?"groom":t.amenity==="animal_boarding"?"hotel":t.amenity==="animal_shelter"?"shelter":"cafe";
+    const lat=e.lat??e.center?.lat,lng=e.lon??e.center?.lon;if(lat==null)return;
+    if(k==="dogpark"&&e.geometry&&e.geometry.length>2)areas.push({type:"Feature",geometry:{type:"Polygon",coordinates:[e.geometry.map(g=>[g.lon,g.lat])]},properties:{}});
+    const id=e.type+e.id;if(seen.has(id))return;seen.add(id);pois.push({id,k,lat,lng,name:t["name:ko"]||t.name||CAT[k].n,hours:t.opening_hours||"",phone:t.phone||t["contact:phone"]||"",web:t.website||t["contact:website"]||""})});
+   if(areas.length&&map.getSource("dogarea"))map.getSource("dogarea").setData({type:"FeatureCollection",features:areas});
+   draw();if(force)toast(pois.length?`반려견 장소 ${pois.length}곳을 찾았어요`:"근처에 등록된 반려견 장소가 없어요");loading=false;return}catch(e){}}
+ loading=false;if(force)toast("장소 서버에 연결하지 못했어요")}
+function draw(){mks.splice(0).forEach(m=>m.remove());if(!show)return;const z=map.getZoom();
+ pois.filter(p=>on[p.k]).slice(0,120).forEach(p=>{const c=CAT[p.k],el=document.createElement("div");el.className="pm"+(z<16.5?" sm":"");el.style.setProperty("--c",c.c);el.innerHTML=`<i>${c.i}</i><span>${esc(p.name)}</span>`;
+  el.onclick=e=>{e.stopPropagation();openPoi(p)};mks.push(new maplibregl.Marker({element:el,anchor:"left",offset:[-12,0]}).setLngLat([p.lng,p.lat]).addTo(map))})}
+function openPoi(p){const c=CAT[p.k],h=DEX.lastFix,dist=h?DEX.hav(h,[p.lat,p.lng]):null,nm=encodeURIComponent(p.name);
+ DEX.openSheet(`<h3>${c.i} ${esc(p.name)}</h3><div class="note" style="display:block;color:var(--sub);text-align:left;margin:-6px 0 10px">${c.n}${dist!=null?` · ${dist>=1000?(dist/1000).toFixed(1)+"km":Math.round(dist)+"m"}`:""}</div>
+ ${p.hours?`<div style="margin:6px 0">🕒 ${esc(p.hours)}</div>`:""}${p.phone?`<div style="margin:6px 0">📞 <a href="tel:${esc(p.phone.replace(/[^0-9+]/g,""))}">${esc(p.phone)}</a></div>`:""}
+ <div class="row"><button class="btn" id="pgo">여기로 길안내</button><a class="btn sec" style="display:grid;place-items:center;text-decoration:none" href="https://map.naver.com/p/search/${nm}" target="_blank" rel="noopener">네이버에서 보기</a></div>`);
+ $("pgo").onclick=()=>{$("sheet").classList.remove("on");DEX.startNav&&DEX.startNav({lat:p.lat,lng:p.lng,name:p.name})}}
+let mt=0;map.on("moveend",()=>{clearTimeout(mt);mt=setTimeout(()=>fetchPois(false),800)});map.on("zoomend",draw);
+ready(()=>setTimeout(()=>fetchPois(false),1500));
+DEX.poiTest=(list)=>{pois=list;draw()};
 })();
 if(DEX.lastFix){const f=DEX.lastFix;DEX.onFix(f[0],f[1],10,f[2])}
