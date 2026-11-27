@@ -9,8 +9,7 @@ let prof=ld(PK,{dog:"Weesky",breed:"husky",coat:"#2c2b2a",look:{mask:"husky",eye
 const toast=m=>DEX.toast(m);
 
 document.head.insertAdjacentHTML("beforeend",`<style>
-.dogm{pointer-events:none}.dogm canvas{width:150px;height:150px;display:block}
-.dogon .me{transform:scale(.5);opacity:.55}
+.dogon .me{width:12px;height:12px;border-width:2px;opacity:.6;box-shadow:none}
 .greet{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 62px);z-index:600;max-width:440px;margin:0 auto;background:rgba(255,255,255,.97);border:1px solid var(--line);border-radius:18px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.14);animation:gin .5s cubic-bezier(.2,.9,.3,1.2)}
 @keyframes gin{from{opacity:0;transform:translateY(-14px) scale(.98)}to{opacity:1;transform:none}}
 .greet h3{margin:0 0 4px;font-size:17px;letter-spacing:-.3px}.greet p{margin:3px 0;font-size:13.5px;color:var(--sub);line-height:1.45}
@@ -34,29 +33,30 @@ document.body.insertAdjacentHTML("beforeend",`<div id="greetBox"></div><button c
 // 상단 버튼 추가
 $("bHist").insertAdjacentHTML("beforebegin",`<button class="ibtn pbtn" id="bDog" title="내 강아지">🐶</button><button class="ibtn" id="bPad" title="소리·트레이닝">🔊</button>`);
 
-/* ---------- 3D 강아지 마커 ---------- */
-const map=DEX.map;let dog=null,R=null,SC=null,CAM=null,marker=null,disp=null,target=null,lastMove=0,speed=0,prevFix=null;
-function buildScene(){if(!window.THREE)return false;const cv=document.createElement("canvas");cv.width=300;cv.height=300;
- R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});R.setPixelRatio(1);R.setSize(300,300,false);
- SC=new THREE.Scene();SC.add(new THREE.HemisphereLight(0xffffff,0x8a8070,.95));const dl=new THREE.DirectionalLight(0xffffff,.7);dl.position.set(-2,5,3);SC.add(dl);
- CAM=new THREE.OrthographicCamera(-1.3,1.3,1.3,-1.3,.1,50);CAM.position.set(0,5.2,4.2);CAM.lookAt(0,.35,0);
- const icon=L.divIcon({className:"dogm",html:"",iconSize:[150,150],iconAnchor:[75,88]});
- marker=L.marker([37.5665,126.978],{icon,interactive:false,zIndexOffset:500});marker.on("add",()=>{const el=marker.getElement();el.innerHTML="";el.appendChild(cv)});
- setDog();return true}
-function setDog(){if(!SC)return;if(dog)SC.remove(dog.g);dog=buildDog(prof);const B=specOf(prof);dog.base=1/Math.max(.7,B.s);dog.g.scale.setScalar(dog.base*.6);SC.add(dog.g);dog.heading=-Math.PI/2;dog.g.rotation.y=dog.heading}
-DEX.onFix=(lat,lng,acc,t)=>{if(!marker&&!buildScene())return;target=[lat,lng];if(!disp){disp=[lat,lng];marker.setLatLng(disp).addTo(map);document.body.classList.add("dogon")}
- if(prevFix){const d=map.distance(prevFix,[lat,lng]),dt=Math.max(.5,(t-prevFix[2])/1000);if(d>1.2&&d/dt<8){speed=d/dt;lastMove=Date.now()}}prevFix=[lat,lng,t];
+/* ---------- 3D 강아지 (지도 안 3D 레이어) ---------- */
+const map=DEX.map;let dog=null,SC=null,RND=null,CAM=null,disp=null,target=null,lastMove=0,speed=0,prevFix=null,layerOn=false;
+function setDog(){if(!SC)return;if(dog)SC.remove(dog.g);dog=buildDog(prof);const B=specOf(prof);dog.base=1/Math.max(.7,B.s);SC.add(dog.g);dog.heading=0;dog.wb=null}
+const dogLayer={id:"dog3d",type:"custom",renderingMode:"3d",
+ onAdd(m,gl){CAM=new THREE.Camera();SC=new THREE.Scene();SC.add(new THREE.HemisphereLight(0xffffff,0x8a8070,1));const dl=new THREE.DirectionalLight(0xffffff,.7);dl.position.set(-2,6,3);SC.add(dl);
+  RND=new THREE.WebGLRenderer({canvas:m.getCanvas(),context:gl,antialias:true});RND.autoClear=false;setDog()},
+ render(gl,matrix){if(!dog||!disp)return;const mc=maplibregl.MercatorCoordinate.fromLngLat([disp[1],disp[0]],0);
+  const z=map.getZoom(),mpp=40075016.686*Math.cos(disp[0]*Math.PI/180)/(512*Math.pow(2,z));const zs=Math.max(.55,Math.min(1,Math.pow(2,(z-17.5)*.35)));
+  const sizeM=46*mpp*zs*dog.base,s=mc.meterInMercatorCoordinateUnits()*sizeM;
+  const l=new THREE.Matrix4().makeTranslation(mc.x,mc.y,mc.z).scale(new THREE.Vector3(s,-s,s)).multiply(new THREE.Matrix4().makeRotationX(Math.PI/2));
+  CAM.projectionMatrix=new THREE.Matrix4().fromArray(matrix).multiply(l);RND.resetState();RND.render(SC,CAM);map.triggerRepaint()}};
+function addLayer(){if(layerOn||!window.THREE)return;try{map.addLayer(dogLayer);layerOn=true;document.body.classList.add("dogon")}catch(e){}}
+DEX.onMapReady=addLayer;if(map.isStyleLoaded&&map.isStyleLoaded())addLayer();
+DEX.onFix=(lat,lng,acc,t)=>{target=[lat,lng];if(!disp)disp=[lat,lng];addLayer();
+ if(prevFix){const d=DEX.hav(prevFix,[lat,lng]),dt=Math.max(.5,(t-prevFix[2])/1000);if(d>1.2&&d/dt<8){speed=d/dt;lastMove=Date.now()}}prevFix=[lat,lng,t];
  if(!DEX.greeted){DEX.greeted=1;showGreet(lat,lng)}};
 let lt=performance.now();
-function loop(n){const dt=Math.min(.05,(n-lt)/1000);lt=n;if(dog&&disp&&target){const d=map.distance(disp,target);
+function loop(n){const dt=Math.min(.05,(n-lt)/1000);lt=n;if(dog&&disp&&target){const d=DEX.hav(disp,target);
   if(d>60){disp=target.slice()}else{const k=Math.min(1,dt*1.6);const nl=[disp[0]+(target[0]-disp[0])*k,disp[1]+(target[1]-disp[1])*k];
    if(d>.4){const r=Math.PI/180,y=Math.sin((nl[1]-disp[1])*r)*Math.cos(nl[0]*r),x=Math.cos(disp[0]*r)*Math.sin(nl[0]*r)-Math.sin(disp[0]*r)*Math.cos(nl[0]*r)*Math.cos((nl[1]-disp[1])*r);if(Math.hypot(x,y)>1e-12)dog.wb=Math.atan2(y,x)}disp=nl}
-  DEX.disp=disp;if(dog.wb!=null){const sa=dog.wb+(map.getBearing?map.getBearing():0)*Math.PI/180,want=Math.atan2(Math.cos(sa),Math.sin(sa));let df=want-dog.heading;df=Math.atan2(Math.sin(df),Math.cos(df));dog.heading+=df*Math.min(1,dt*6);dog.g.rotation.y=dog.heading}
-const zs=Math.max(.32,Math.min(.85,.6*Math.pow(2,(map.getZoom()-17)*.45)));dog.g.scale.setScalar(dog.base*zs);
-  marker.setLatLng(disp);const moving=Date.now()-lastMove<3500&&d>.25;animDog(dog,dt*(moving?Math.min(1.6,.6+speed/1.4):1),moving,n/1000);R.render(SC,CAM)}
+  DEX.disp=disp;if(dog.wb!=null){const want=Math.PI/2-dog.wb;let df=want-dog.heading;df=Math.atan2(Math.sin(df),Math.cos(df));dog.heading+=df*Math.min(1,dt*6);dog.g.rotation.y=dog.heading}
+  const moving=Date.now()-lastMove<3500&&d>.25;animDog(dog,dt*(moving?Math.min(1.6,.6+speed/1.4):1),moving,n/1000);map.triggerRepaint()}
  requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
-// 화면 x 방향 = 3D x, 화면 아래 방향 = 3D +z → heading = atan2(-dz,dx) 기준. 투영 y는 아래로 증가하므로 atan2(dy,dx)를 그대로 사용(= -(-dy)).
 
 /* ---------- 내 강아지 (이름·견종·꾸미기) ---------- */
 const BKEYS=Object.keys(BREEDS);const COATS2=["","#2c2b2a","#5c6168","#f6f4ef","#e8d6b8","#c9733a","#7a4a2b"];const ACC=["#2d55e8","#c0453a","#E0782A","#2fb36d","#e7a1b0","#141619","#f4efe6"];
@@ -98,7 +98,7 @@ async function showGreet(lat,lng){const box=$("greetBox"),h=new Date().getHours(
  const td=new Date().toDateString(),seen=ld("de.greet","")===td;sv("de.greet",td);
  box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(prof.dog)} 보호자님</h3><p>날씨를 확인하는 중…</p></div>`;$("gx").onclick=()=>box.innerHTML="";
  const w=await fetchWx(lat,lng);if(!box.firstChild)return;
- if(!w){box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(prof.dog)} 보호자님</h3><p>오늘도 즐거운 산책 되세요 🐾</p></div>`;$("gx").onclick=()=>box.innerHTML="";return}
+ if(!w){box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(prof.dog)} 보호자님</h3><p>오늘도 즐거운 산책 되세요 🐾</p></div>`;$("gx").onclick=()=>box.innerHTML="";setTimeout(()=>box.innerHTML="",7000);return}
  const {sc,tips}=suit(w),col=sc>=75?"#2fb36d":sc>=50?"#e3a008":"#e5484d",lab=sc>=75?"산책 좋음":sc>=50?"짧게 추천":"실내 놀이 추천";
  const today=DEX.walks().filter(x=>new Date(x.start).toDateString()===td),km=today.reduce((a,x)=>a+x.dist,0)/1000;
  box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(prof.dog)} 보호자님</h3><span class="score" style="background:${col}22;color:${col}">● ${lab} · ${sc}</span>
@@ -137,10 +137,10 @@ let clicks=[];
  b.onpointerdown=e=>{e.preventDefault();longed=false;tm=setTimeout(()=>{longed=true;SND.whistle(5000,.9);log("whistle")},480)};
  b.onpointerup=e=>{e.preventDefault();clearTimeout(tm);if(longed)return;const n=Date.now();if(n-last<320){last=0;SND.praise();log("praise");return}last=n;SND.click();log("click")};
  b.onpointercancel=()=>clearTimeout(tm);b.oncontextmenu=e=>e.preventDefault()})();
-const stars=L.layerGroup().addTo(map);
-function log(k){const f=DEX.lastFix;if(!f)return;clicks.push([+f[0].toFixed(6),+f[1].toFixed(6),Date.now(),k]);L.marker([f[0],f[1]],{icon:L.divIcon({className:"star",html:k==="praise"?"💛":k==="whistle"?"🎵":"⭐",iconSize:[18,18],iconAnchor:[9,9]}),interactive:false}).addTo(stars);
+const starMk=[];
+function log(k){const f=DEX.lastFix;if(!f)return;clicks.push([+f[0].toFixed(6),+f[1].toFixed(6),Date.now(),k]);const el=document.createElement("div");el.className="star";el.textContent=k==="praise"?"💛":k==="whistle"?"🎵":"⭐";starMk.push(new maplibregl.Marker({element:el}).setLngLat([f[1],f[0]]).addTo(map));
  $("clk").animate([{transform:"scale(1)"},{transform:"scale(1.12)"},{transform:"scale(1)"}],{duration:200})}
-DEX.onStart=()=>{clicks=[];stars.clearLayers();$("clk").hidden=false;SND.squeak()};
+DEX.onStart=()=>{clicks=[];starMk.splice(0).forEach(m=>m.remove());$("clk").hidden=false;SND.squeak()};
 DEX.onEnd=w=>{$("clk").hidden=true;if(clicks.length)w.clicks=clicks.slice(0,300)};
 if(DEX.cur)$("clk").hidden=false;
 

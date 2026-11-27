@@ -7,16 +7,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>DogEarth · 실제 지도 테스트</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-rotate@0.6.2/dist/leaflet-rotate.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
 :root{--bg:#f4f5f7;--card:rgba(255,255,255,.94);--line:#e3e6eb;--tx:#141619;--sub:#6b7280;--blue:#2D55E8;--blue2:#5b7cff;--orange:#E0782A;--red:#e5484d;--green:#2fb36d}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;overflow:hidden}
 #map{position:fixed;inset:0}
-.leaflet-container{background:#eef0f2}
-.dark-tiles{filter:saturate(.75) brightness(1.02)}
+.maplibregl-ctrl-scale{background:rgba(255,255,255,.8);font-size:10px;border-color:#555}
+.maplibregl-ctrl-top-left{top:calc(env(safe-area-inset-top) + 60px);left:2px}
+.maplibregl-ctrl-attrib{font-size:9px}
 .top{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:500;display:flex;gap:8px;align-items:center}
 .brand,.gps,.ibtn{box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .brand{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-weight:700;letter-spacing:-.2px;backdrop-filter:blur(8px)}
@@ -41,7 +41,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 body.full .panel{left:auto;right:10px;padding:8px 14px;border-radius:14px;cursor:pointer}body.full .row,body.full .st{display:none}body.full .stats{display:block}body.full .big{font-size:18px}body.full .big::after{content:" ▲";font-size:11px;color:var(--sub)}
 @media (max-width:430px){.top{gap:6px}.ibtn{width:36px;height:36px;font-size:16px}.brand{padding:7px 10px;font-size:15px}#gtxt{display:none}.gps{padding:9px}}
 .ibtn.on{background:#2D55E8;color:#fff;border-color:#2D55E8}
-.leaflet-pitch-sky{background:linear-gradient(#cfe3f7,#eef4fa)!important}
 .sheet{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.5);display:none}
 .sheet.on{display:block}
 .sheet .in{position:absolute;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px)}
@@ -62,15 +61,10 @@ body.full .panel{left:auto;right:10px;padding:8px 14px;border-radius:14px;cursor
 .paw{font-size:14px;opacity:.75}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:1000;background:#141619;color:#fff;padding:9px 14px;border-radius:12px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
 .toast.on{opacity:1}
-.leaflet-control-attribution{font-size:9px!important;background:rgba(255,255,255,.7)!important;color:#666!important}
-.leaflet-control-attribution a{color:#444!important}
-.leaflet-control-zoom{display:none}
 .zoom{position:fixed;right:12px;top:calc(env(safe-area-inset-top) + 62px);z-index:500;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .zoom button{width:40px;height:40px;border:0;background:transparent;color:var(--tx);font-size:22px;font-weight:500}
 .zoom button+button{border-top:1px solid var(--line)}
 .zoom .lv{font-size:10px;color:var(--sub);text-align:center;padding:2px 0;border-top:1px solid var(--line)}
-.leaflet-control-scale{margin-left:12px!important;margin-top:calc(env(safe-area-inset-top) + 62px)!important}
-.leaflet-control-scale-line{background:rgba(255,255,255,.8)!important;border-color:#555!important;color:#333!important;font-size:10px!important}
 </style>
 </head>
 <body>
@@ -110,18 +104,32 @@ let walks=load(KEY,[]);           // [{id,start,end,dist,moving,pts:[[lat,lng,t]
 let cur=load(CUR,null);           // 진행 중 산책(새로고침 대비)
 
 // ───── 지도 ─────
-const map=L.map('map',{rotate:true,rotateControl:false,touchRotate:true,bearing:0,zoomControl:false,attributionControl:true,zoomSnap:0.5,zoomDelta:1,wheelPxPerZoomLevel:90,minZoom:12,maxZoom:19}).setView([37.5665,126.978],17);
-L.control.scale({metric:true,imperial:false,position:'topleft'}).addTo(map);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:19,className:'dark-tiles',
-  attribution:'© OpenStreetMap contributors'
-}).addTo(map);
-const todayLayer=L.layerGroup().addTo(map);
-const viewLayer=L.layerGroup().addTo(map);
-map.on('zoomend',()=>{document.getElementById('zLv').textContent=(Math.round(map.getZoom()*2)/2)});
-let liveLine=L.polyline([],{color:'#5b7cff',weight:6,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(map);
-let meMarker=null, accCircle=null, follow=true;
+const NORTH_PITCH=35,HEAD_PITCH=58;
+const map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:[126.978,37.5665],zoom:17,pitch:NORTH_PITCH,bearing:0,maxPitch:70,minZoom:12,maxZoom:19.5,attributionControl:{compact:true}});
+map.addControl(new maplibregl.ScaleControl({unit:'metric',maxWidth:80}),'top-left');
+const LL=a=>[a[1],a[0]];
+const EMPTY={type:'FeatureCollection',features:[]};
+const pend={};let styleReady=false;
+function setData(id,fc){pend[id]=fc;if(styleReady&&map.getSource(id))map.getSource(id).setData(fc)}
+const lineFC=lines=>({type:'FeatureCollection',features:lines.filter(l=>l.length>1).map(l=>({type:'Feature',geometry:{type:'LineString',coordinates:l.map(LL)},properties:{}}))});
+map.on('load',()=>{
+  try{map.setPaintProperty('building-3d','fill-extrusion-color','#e9e5df');map.setPaintProperty('building-3d','fill-extrusion-opacity',.88);
+   map.setPaintProperty('building-3d','fill-extrusion-height',['max',['coalesce',['get','render_height'],0],7])}catch(e){}
+  map.getStyle().layers.forEach(l=>{if(l.type!=='symbol')return;const tf=map.getLayoutProperty(l.id,'text-field');if(tf&&JSON.stringify(tf).includes('name:latin'))map.setLayoutProperty(l.id,'text-field',['coalesce',['get','name:ko'],['get','name:nonlatin'],['get','name']])});
+  ['acc','today','live','view','viewpts'].forEach(id=>map.addSource(id,{type:'geojson',data:pend[id]||EMPTY}));
+  map.addLayer({id:'acc',type:'fill',source:'acc',paint:{'fill-color':'#5b7cff','fill-opacity':.1}});
+  map.addLayer({id:'today',type:'line',source:'today',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#E0782A','line-width':4,'line-opacity':.6,'line-dasharray':[.2,2]}});
+  map.addLayer({id:'live',type:'line',source:'live',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2D55E8','line-width':6,'line-opacity':.95}});
+  map.addLayer({id:'view',type:'line',source:'view',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#E0782A','line-width':6}});
+  map.addLayer({id:'viewpts',type:'circle',source:'viewpts',paint:{'circle-radius':6,'circle-color':['get','c'],'circle-stroke-color':'#fff','circle-stroke-width':2}});
+  styleReady=true;window.DEX&&DEX.onMapReady&&DEX.onMapReady()});
+map.on('zoom',()=>{document.getElementById('zLv').textContent=(Math.round(map.getZoom()*2)/2)});
+let meMarker=null, follow=true, liveCoords=[];
 map.on('dragstart',()=>follow=false);
+map.on('rotatestart',e=>{if(e.originalEvent)follow=false});
+function circlePoly(c,r){const pts=[];for(let i=0;i<=40;i++){const a=i/40*2*Math.PI,dy=r*Math.cos(a)/111320,dx=r*Math.sin(a)/(111320*Math.cos(c[0]*Math.PI/180));pts.push([c[1]+dx,c[0]+dy])}return{type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Polygon',coordinates:[pts]},properties:{}}]}}
+function fitPts(pts,extra){if(!pts.length)return;let a=[1e9,1e9],b=[-1e9,-1e9];pts.forEach(p=>{a[0]=Math.min(a[0],p[0]);a[1]=Math.min(a[1],p[1]);b[0]=Math.max(b[0],p[0]);b[1]=Math.max(b[1],p[1])});
+  const ph=document.querySelector('.panel').getBoundingClientRect();map.fitBounds([[a[1],a[0]],[b[1],b[0]]],Object.assign({padding:{top:90,bottom:innerHeight-ph.top+30,left:40,right:60},maxZoom:18.5,duration:700},extra||{}))}
 
 // ───── 유틸 ─────
 const $=id=>document.getElementById(id);
@@ -136,13 +144,7 @@ const STEP=0.7, STRIDE=0.45; // 사람 보폭 0.7m, 중형견 보폭 약 0.45m(�
 let tt;function toast(m){const e=$('toast');e.textContent=m;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2200)}
 
 // ───── 오늘 이전 산책 표시 ─────
-function drawToday(){
-  todayLayer.clearLayers();
-  const k=dayKey(Date.now());
-  walks.filter(w=>dayKey(w.start)===k).forEach(w=>{
-    L.polyline(w.pts.map(p=>[p[0],p[1]]),{color:'#E0782A',weight:4,opacity:.55,dashArray:'1 8',lineCap:'round'}).addTo(todayLayer);
-  });
-}
+function drawToday(){const k=dayKey(Date.now());setData('today',lineFC(walks.filter(w=>dayKey(w.start)===k).map(w=>w.pts)))}
 
 // ───── GPS ─────
 let watchId=null,lastFix=null,paused=false,wake=null,tick=null;
@@ -156,14 +158,11 @@ function onPos(p){
   const {latitude:lat,longitude:lng,accuracy:acc}=p.coords, t=p.timestamp||Date.now();
   setGps(acc); lastFix=[lat,lng,t];
   const ll=[lat,lng];
-  if(!meMarker){
-    meMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
-    accCircle=L.circle(ll,{radius:acc,color:'#5b7cff',weight:1,fillOpacity:.08}).addTo(map);
-    map.setView(ll,17);
-  }else{meMarker.setLatLng(ll);accCircle.setLatLng(ll).setRadius(acc)}
+  if(!meMarker){const el=document.createElement('div');el.className='me';meMarker=new maplibregl.Marker({element:el,pitchAlignment:'map'}).setLngLat(LL(ll)).addTo(map);map.jumpTo({center:LL(ll),zoom:17.5})}
+  else meMarker.setLngLat(LL(ll));
+  setData('acc',circlePoly(ll,Math.min(acc,80)));
   if(lastC){const dd=hav(lastC,ll);if(dd>6&&acc<35){course=brg(lastC,ll);lastC=ll;movedAt=Date.now()}}else lastC=ll;
   if(p.coords.heading!=null&&!isNaN(p.coords.heading)&&p.coords.speed>0.6){course=p.coords.heading;movedAt=Date.now()}
-  if(follow&&!window.DEX?.disp)placeFollow(ll);
   window.DEX&&DEX.onFix&&DEX.onFix(lat,lng,acc,t);
   if(!cur||paused)return;
   // 노이즈 필터: 정확도 40m 초과 무시, 3m 미만 이동 무시, 초속 8m 초과 튐 무시
@@ -176,7 +175,7 @@ function onPos(p){
     cur.dist+=d;
   }
   pts.push([+lat.toFixed(6),+lng.toFixed(6),t]);
-  liveLine.addLatLng(ll);
+  liveCoords.push(ll);setData('live',lineFC([liveCoords]));
   save(CUR,cur);
   render();
 }
@@ -212,7 +211,7 @@ function start(){
   startGps();
   cur={id:Date.now().toString(36),start:Date.now(),dist:0,moving:0,resumeAt:Date.now(),pts:[]};
   if(lastFix&&Date.now()-lastFix[2]<15000)cur.pts.push(lastFix);
-  liveLine.setLatLngs(cur.pts.map(p=>[p[0],p[1]]));
+  liveCoords=cur.pts.map(p=>[p[0],p[1]]);setData('live',lineFC([liveCoords]));
   paused=false;follow=true;save(CUR,cur);lockOn();
   clearInterval(tick);tick=setInterval(render,1000);
   $('note').textContent='화면이 켜져 있는 동안 기록됩니다. 화면을 끄거나 다른 앱으로 가면 기록이 멈출 수 있어요.';
@@ -229,7 +228,7 @@ function end(){
   if(w.pts.length>=2&&w.dist>=20){walks.push(w);save(KEY,walks);showSummary(w)}
   else toast('이동 거리가 너무 짧아 저장하지 않았어요');
   cur=null;paused=false;localStorage.removeItem(CUR);
-  liveLine.setLatLngs([]);drawToday();render();
+  liveCoords=[];setData('live',EMPTY);drawToday();render();
   $('note').textContent='기록은 이 폰의 브라우저에만 저장됩니다. ☰ 에서 날짜별 기록과 GPX 내보내기를 볼 수 있어요.';
 }
 
@@ -248,13 +247,11 @@ function showSummary(w){
   <div class="row"><button class="btn sec" onclick="DE.gpx('${w.id}')">GPX 저장</button><button class="btn" onclick="DE.close()">확인</button></div>`);
   showWalk(w,false);
 }
-function showWalk(w,fit=true){
-  viewLayer.clearLayers();
-  const ll=w.pts.map(p=>[p[0],p[1]]);
-  L.polyline(ll,{color:'#E0782A',weight:6,opacity:.95,lineCap:'round'}).addTo(viewLayer);
-  L.circleMarker(ll[0],{radius:6,color:'#fff',fillColor:'#2fb36d',fillOpacity:1,weight:2}).addTo(viewLayer);
-  L.circleMarker(ll[ll.length-1],{radius:6,color:'#fff',fillColor:'#e5484d',fillOpacity:1,weight:2}).addTo(viewLayer);
-  follow=false;map.fitBounds(L.latLngBounds(ll),{padding:[40,40],paddingBottomRight:[40,260]});
+function clearView(){setData('view',EMPTY);setData('viewpts',EMPTY)}
+function showWalk(w){
+  const ll=w.pts.map(p=>[p[0],p[1]]);setData('view',lineFC([ll]));
+  setData('viewpts',{type:'FeatureCollection',features:[[ll[0],'#2fb36d'],[ll[ll.length-1],'#e5484d']].map(([p,c])=>({type:'Feature',geometry:{type:'Point',coordinates:LL(p)},properties:{c}}))});
+  follow=false;fitPts(ll,{bearing:0,pitch:NORTH_PITCH});
 }
 function history(){
   const by={};walks.slice().reverse().forEach(w=>{(by[dayKey(w.start)]=by[dayKey(w.start)]||[]).push(w)});
@@ -278,54 +275,54 @@ function gpx(id){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([x],{type:'application/gpx+xml'}));
   a.download=`dogearth-${dayKey(w.start)}-${hm(w.start).replace(':','')}.gpx`;document.body.appendChild(a);a.click();a.remove();
 }
-window.DEX=window.DEX||{};Object.assign(DEX,{map,get cur(){return cur},get paused(){return paused},get lastFix(){return lastFix},get follow(){return follow},set follow(v){follow=v},toast,openSheet,walks:()=>walks,showWalk});
+window.DEX=window.DEX||{};Object.assign(DEX,{map,LL,hav,get cur(){return cur},get paused(){return paused},get lastFix(){return lastFix},get follow(){return follow},set follow(v){follow=v},toast,openSheet,walks:()=>walks,showWalk});
 window.DE={
   close:()=>{$('sheet').classList.remove('on')},
   view:id=>{const w=walks.find(x=>x.id===id);if(w){$('sheet').classList.remove('on');showWalk(w)}},
   gpx,
-  del:id=>{if(!confirm('이 산책 기록을 삭제할까요? 되돌릴 수 없어요.'))return;walks=walks.filter(x=>x.id!==id);save(KEY,walks);viewLayer.clearLayers();drawToday();history()}
+  del:id=>{if(!confirm('이 산책 기록을 삭제할까요? 되돌릴 수 없어요.'))return;walks=walks.filter(x=>x.id!==id);save(KEY,walks);clearView();drawToday();history()}
 };
 $('bHist').onclick=history;
 $('zIn').onclick=()=>map.zoomIn(1);$('zOut').onclick=()=>map.zoomOut(1);
-$('bCenter').onclick=()=>{viewLayer.clearLayers();if(!lastFix){startGps();return}
+$('bCenter').onclick=()=>{clearView();if(!lastFix){startGps();return}
   setNav(nav==='north'?'head':'north',true)};
 function setNav(m,say){follow=true;if(document.body.classList.contains('full'))setFull(false);nav=m;
-  if(m==='head'){$('bCenter').textContent='➤';$('bCenter').classList.add('on');if(course!=null){navB=-course;map.setBearing(navB)}map.setPitch(40,{animate:true,duration:.6});askCompass();if(say)toast('진행 방향 보기 — 가는 쪽이 위로 와요')}
-  else{$('bCenter').textContent='◎';$('bCenter').classList.remove('on');navB=0;map.resetNorthPitch();if(say)toast('북쪽 고정 보기')}
-  if(lastFix)placeFollow([lastFix[0],lastFix[1]],true)}
+  if(m==='head'){$('bCenter').textContent='➤';$('bCenter').classList.add('on');if(course!=null)navB=course;else navB=map.getBearing();askCompass();if(say)toast('진행 방향 보기 — 가는 쪽이 위로 와요')}
+  else{$('bCenter').textContent='◎';$('bCenter').classList.remove('on');navB=0;if(say)toast('북쪽 고정 보기')}
+  const p=lastFix?LL(lastFix):map.getCenter().toArray();easing=Date.now()+900;map.easeTo({center:p,bearing:navB,pitch:m==='head'?HEAD_PITCH:NORTH_PITCH,padding:padFor(),duration:800})}
+let easing=0;
 $('bFull').onclick=()=>{const on=!document.body.classList.contains('full');setFull(on)};
 document.querySelector('.panel').addEventListener('click',e=>{if(document.body.classList.contains('full')){e.stopPropagation();setFull(false)}},true);
 function setFull(on){document.body.classList.toggle('full',on);$('bFull').classList.toggle('on',on);follow=false;
   if(on){const pts=[];walks.filter(w=>dayKey(w.start)===dayKey(Date.now())).forEach(w=>w.pts.forEach(p=>pts.push([p[0],p[1]])));if(cur)cur.pts.forEach(p=>pts.push([p[0],p[1]]));if(lastFix)pts.push([lastFix[0],lastFix[1]]);
-   if(pts.length>1)map.fitBounds(L.latLngBounds(pts),{padding:[70,40]});else map.setZoom(Math.max(13,map.getZoom()-2))}
-  else if(lastFix){follow=true;placeFollow([lastFix[0],lastFix[1]],true)}}
+   setTimeout(()=>{if(pts.length>1)fitPts(pts,{bearing:0,pitch:20});else map.easeTo({zoom:Math.max(14,map.getZoom()-2),bearing:0,pitch:20,padding:{top:0,bottom:0,left:0,right:0}})},260)}
+  else if(lastFix)setNav(nav,false)}
 // ---- 진행 방향 · 따라가기 ----
-let zooming=false;map.on('zoomstart',()=>zooming=true);map.on('zoomend',()=>setTimeout(()=>zooming=false,150));
+let zooming=false;map.on('zoomstart',e=>{if(e.originalEvent)zooming=true});map.on('zoomend',()=>setTimeout(()=>zooming=false,150));
 let nav='north',course=null,lastC=null,movedAt=0,compass=null,navB=0;
 function brg(a,b){const y=Math.sin(rad(b[1]-a[1]))*Math.cos(rad(b[0])),x=Math.cos(rad(a[0]))*Math.sin(rad(b[0]))-Math.sin(rad(a[0]))*Math.cos(rad(b[0]))*Math.cos(rad(b[1]-a[1]));return(Math.atan2(y,x)*180/Math.PI+360)%360}
 function askCompass(){const on=()=>addEventListener('deviceorientation',e=>{const h=e.webkitCompassHeading!=null?e.webkitCompassHeading:(e.absolute&&e.alpha!=null?360-e.alpha:null);if(h!=null)compass=h},true);
   try{if(window.DeviceOrientationEvent&&DeviceOrientationEvent.requestPermission)DeviceOrientationEvent.requestPermission().then(r=>{if(r==='granted')on()}).catch(()=>{});else on()}catch(e){}}
-function placeFollow(ll,anim){const sz=map.getSize(),pt=document.querySelector('.panel').getBoundingClientRect().top,top=70,ty=nav==='head'?top+(pt-top)*.72:(top+pt)/2;
-  const p=map.latLngToContainerPoint(ll),dx=p.x-sz.x/2,dy=p.y-ty;if(Math.abs(dx)<1&&Math.abs(dy)<1)return;
-  const c=map.containerPointToLatLng([sz.x/2+dx,sz.y/2+dy]);map.setView(c,map.getZoom(),{animate:!!anim,duration:.5})}
+function padFor(){const pt=document.querySelector('.panel').getBoundingClientRect().top,bot=innerHeight-pt,top=70,avail=pt-top;return nav==='head'?{top:top+avail*.42,bottom:bot,left:0,right:0}:{top,bottom:bot,left:0,right:0}}
+function placeFollow(ll,anim){if(Date.now()<easing||map.isMoving&&map.isMoving()&&anim===undefined)return;const o={center:LL(ll),padding:padFor()};if(nav==='head')o.bearing=navB;if(anim)map.easeTo(Object.assign(o,{duration:500}));else map.jumpTo(o)}
 let nlt=performance.now();
 (function navLoop(n){const dt=Math.min(.1,(n-nlt)/1000);nlt=n;
-  if(nav==='head'){const still=Date.now()-movedAt>6000;const hd=(still&&compass!=null)?compass:course;if(hd!=null){const want=-hd;let df=((want-navB)%360+540)%360-180;if(Math.abs(df)>.4){navB+=df*Math.min(1,dt*2.2);map.setBearing(navB)}}}
-  const d=window.DEX&&DEX.disp;if(follow&&d&&!zooming)placeFollow(d,false);
+  if(nav==='head'){const still=Date.now()-movedAt>6000;const hd=(still&&compass!=null)?compass:course;if(hd!=null){let df=((hd-navB)%360+540)%360-180;if(Math.abs(df)>.3)navB+=df*Math.min(1,dt*2.2)}}
+  const d=(window.DEX&&DEX.disp)||lastFix;if(follow&&d&&!zooming&&Date.now()>easing&&!document.body.classList.contains('full'))placeFollow(d,false);
   requestAnimationFrame(navLoop)})(performance.now());
 
 // ───── 시작 ─────
 drawToday();
 if(cur){ // 새로고침 후 이어가기
   paused=!!cur.paused; if(!paused)cur.resumeAt=Date.now();
-  liveLine.setLatLngs(cur.pts.map(p=>[p[0],p[1]]));
+  liveCoords=cur.pts.map(p=>[p[0],p[1]]);setData('live',lineFC([liveCoords]));
   startGps();lockOn();tick=setInterval(render,1000);toast('진행 중이던 산책을 이어갑니다');
 }else startGps();
 render();
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="dogkit.js?v=6"></script>
-<script src="extras.js?v=7"></script>
+<script src="dogkit.js?v=8"></script>
+<script src="extras.js?v=8"></script>
 </body>
 </html>
