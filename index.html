@@ -1,3 +1,278 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DogEarth 테스트</title>
-<style>body{margin:0;height:100vh;display:grid;place-items:center;font-family:-apple-system,system-ui,sans-serif;background:#0f1115;color:#e8eaf0;text-align:center}h1{color:#5b7cff;font-size:28px}p{color:#9aa3b2}</style></head>
-<body><div><h1>DogEarth</h1><p>연결 확인 완료 ✓<br>실제 지도 테스트판은 오늘 밤 이 주소에 올라옵니다.</p></div></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>DogEarth · 실제 지도 테스트</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--bg:#0f1115;--card:rgba(20,22,28,.92);--line:#2a2e38;--tx:#eef0f4;--sub:#98a0ae;--blue:#2D55E8;--blue2:#5b7cff;--orange:#E0782A;--red:#e5484d;--green:#2fb36d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;overflow:hidden}
+#map{position:fixed;inset:0}
+.leaflet-container{background:#1a1d24}
+.top{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:500;display:flex;gap:8px;align-items:center}
+.brand{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-weight:700;letter-spacing:-.2px;backdrop-filter:blur(8px)}
+.brand b{color:var(--blue2)}
+.gps{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 10px;font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#666}
+.dot.ok{background:var(--green)}.dot.mid{background:#e3b341}.dot.bad{background:var(--red)}
+.sp{flex:1}
+.ibtn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--tx);font-size:18px;display:grid;place-items:center}
+.panel{position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:500;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px;backdrop-filter:blur(10px)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+.big{grid-column:1/-1;font-size:44px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+.big small{font-size:16px;color:var(--sub);font-weight:600;margin-left:4px}
+.st b{display:block;font-size:19px;font-weight:700}
+.st span{font-size:11px;color:var(--sub)}
+.row{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;height:52px;border-radius:14px;border:0;font-size:16px;font-weight:700;color:#fff;background:var(--blue)}
+.btn.sec{background:#262a33;color:var(--tx)}
+.btn.stop{background:var(--red)}
+.btn.go{background:var(--green)}
+.note{font-size:11.5px;color:var(--sub);margin-top:8px;text-align:center;line-height:1.45}
+.sheet{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.5);display:none}
+.sheet.on{display:block}
+.sheet .in{position:absolute;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:#15171d;border-radius:22px 22px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px)}
+.sheet h3{margin:0 0 12px;font-size:18px}
+.day{border-top:1px solid var(--line);padding:12px 0}
+.day h4{margin:0 0 6px;font-size:14px;color:var(--sub);font-weight:600}
+.walk{display:flex;align-items:center;gap:10px;padding:8px 0}
+.walk .m{flex:1}
+.walk .m b{font-size:15px}
+.walk .m div{font-size:12px;color:var(--sub)}
+.chip{padding:7px 10px;border-radius:10px;background:#262a33;color:var(--tx);border:0;font-size:12.5px}
+.chip.r{color:#ff8a8d}
+.sum{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:8px 0 14px}
+.sum div{background:#1d2028;border-radius:14px;padding:12px}
+.sum b{display:block;font-size:22px}
+.sum span{font-size:12px;color:var(--sub)}
+.me{width:22px;height:22px;border-radius:50%;background:var(--blue2);border:3px solid #fff;box-shadow:0 0 0 6px rgba(91,124,255,.25),0 2px 8px rgba(0,0,0,.5)}
+.paw{font-size:14px;opacity:.75}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:1000;background:#262a33;color:#fff;padding:9px 14px;border-radius:12px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1}
+.leaflet-control-attribution{font-size:9px!important;background:rgba(0,0,0,.45)!important;color:#aaa!important}
+.leaflet-control-attribution a{color:#ccc!important}
+.leaflet-control-zoom{display:none}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="top">
+  <div class="brand">Dog<b>Earth</b></div>
+  <div class="gps"><span class="dot" id="gdot"></span><span id="gtxt">GPS 대기</span></div>
+  <div class="sp"></div>
+  <button class="ibtn" id="bCenter" title="내 위치">◎</button>
+  <button class="ibtn" id="bHist" title="기록">☰</button>
+</div>
+
+<div class="panel">
+  <div class="stats">
+    <div class="big"><span id="vKm">0.00</span><small>km</small></div>
+    <div class="st"><b id="vTime">0:00</b><span>시간</span></div>
+    <div class="st"><b id="vPace">–'––"</b><span>페이스 /km</span></div>
+    <div class="st"><b id="vSteps">0</b><span>걸음 · 🐾 <span id="vPaw">0</span></span></div>
+  </div>
+  <div class="row" id="ctl"></div>
+  <div class="note" id="note">산책 시작을 누르면 GPS 기록이 시작됩니다. 위치는 이 폰에만 저장되고 누구에게도 공유되지 않습니다.</div>
+</div>
+
+<div class="sheet" id="sheet"><div class="in" id="sheetIn"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(()=>{
+// ───── 저장소 ─────
+const KEY='de.walks.v1', CUR='de.cur.v1';
+const load=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast('저장 공간 부족')}};
+let walks=load(KEY,[]);           // [{id,start,end,dist,moving,pts:[[lat,lng,t]]}]
+let cur=load(CUR,null);           // 진행 중 산책(새로고침 대비)
+
+// ───── 지도 ─────
+const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([37.5665,126.978],16);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  maxZoom:20,subdomains:'abcd',
+  attribution:'© OpenStreetMap · © CARTO'
+}).addTo(map);
+const todayLayer=L.layerGroup().addTo(map);
+const viewLayer=L.layerGroup().addTo(map);
+let liveLine=L.polyline([],{color:'#5b7cff',weight:6,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(map);
+let meMarker=null, accCircle=null, follow=true;
+map.on('dragstart',()=>follow=false);
+
+// ───── 유틸 ─────
+const $=id=>document.getElementById(id);
+const R=6371000, rad=d=>d*Math.PI/180;
+function hav(a,b){const dLat=rad(b[0]-a[0]),dLng=rad(b[1]-a[1]);const x=Math.sin(dLat/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+const pad=n=>String(n).padStart(2,'0');
+function fmtT(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?`${h}:${pad(m)}:${pad(x)}`:`${m}:${pad(x)}`}
+function fmtPace(sec,m){if(m<50)return "–'––\"";const p=sec/(m/1000);if(!isFinite(p)||p>3600)return "–'––\"";return `${Math.floor(p/60)}'${pad(Math.round(p%60))}"`}
+const dayKey=t=>{const d=new Date(t);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+const hm=t=>{const d=new Date(t);return `${pad(d.getHours())}:${pad(d.getMinutes())}`};
+const STEP=0.7, STRIDE=0.45; // 사람 보폭 0.7m, 중형견 보폭 약 0.45m(발 4개)
+let tt;function toast(m){const e=$('toast');e.textContent=m;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2200)}
+
+// ───── 오늘 이전 산책 표시 ─────
+function drawToday(){
+  todayLayer.clearLayers();
+  const k=dayKey(Date.now());
+  walks.filter(w=>dayKey(w.start)===k).forEach(w=>{
+    L.polyline(w.pts.map(p=>[p[0],p[1]]),{color:'#E0782A',weight:4,opacity:.55,dashArray:'1 8',lineCap:'round'}).addTo(todayLayer);
+  });
+}
+
+// ───── GPS ─────
+let watchId=null,lastFix=null,paused=false,wake=null,tick=null;
+function setGps(acc){
+  const d=$('gdot'),t=$('gtxt');
+  if(acc==null){d.className='dot';t.textContent='GPS 대기';return}
+  d.className='dot '+(acc<=15?'ok':acc<=35?'mid':'bad');
+  t.textContent=`정확도 ±${Math.round(acc)}m`;
+}
+function onPos(p){
+  const {latitude:lat,longitude:lng,accuracy:acc}=p.coords, t=p.timestamp||Date.now();
+  setGps(acc); lastFix=[lat,lng,t];
+  const ll=[lat,lng];
+  if(!meMarker){
+    meMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+    accCircle=L.circle(ll,{radius:acc,color:'#5b7cff',weight:1,fillOpacity:.08}).addTo(map);
+    map.setView(ll,17);
+  }else{meMarker.setLatLng(ll);accCircle.setLatLng(ll).setRadius(acc)}
+  if(follow)map.panTo(ll,{animate:true});
+  if(!cur||paused)return;
+  // 노이즈 필터: 정확도 40m 초과 무시, 3m 미만 이동 무시, 초속 8m 초과 튐 무시
+  if(acc>40)return;
+  const pts=cur.pts,last=pts[pts.length-1];
+  if(last){
+    const d=hav(last,ll),dt=(t-last[2])/1000;
+    if(d<Math.max(3,acc*0.4))return;
+    if(dt>0&&d/dt>8)return;
+    cur.dist+=d;
+  }
+  pts.push([+lat.toFixed(6),+lng.toFixed(6),t]);
+  liveLine.addLatLng(ll);
+  save(CUR,cur);
+  render();
+}
+function onErr(e){
+  setGps(null);
+  const m={1:'위치 권한이 거부되었습니다. 설정 › 개인정보 › 위치 서비스에서 브라우저를 "앱을 사용하는 동안"으로 허용해 주세요.',2:'위치를 찾을 수 없습니다. 실외에서 다시 시도해 주세요.',3:'위치 응답이 늦습니다. 잠시 기다려 주세요.'}[e.code]||'위치 오류';
+  $('note').textContent=m;
+}
+function startGps(){
+  if(!('geolocation' in navigator)){$('note').textContent='이 브라우저는 위치 기능을 지원하지 않습니다.';return}
+  if(watchId!=null)return;
+  watchId=navigator.geolocation.watchPosition(onPos,onErr,{enableHighAccuracy:true,maximumAge:0,timeout:20000});
+}
+async function lockOn(){try{if('wakeLock' in navigator){wake=await navigator.wakeLock.request('screen')}}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(cur&&!paused)lockOn();}});
+
+// ───── 산책 제어 ─────
+function elapsed(){if(!cur)return 0;let ms=cur.moving+(paused?0:Date.now()-cur.resumeAt);return ms/1000}
+function render(){
+  const s=elapsed(),m=cur?cur.dist:0;
+  $('vKm').textContent=(m/1000).toFixed(2);
+  $('vTime').textContent=fmtT(s);
+  $('vPace').textContent=fmtPace(s,m);
+  $('vSteps').textContent=Math.round(m/STEP).toLocaleString();
+  $('vPaw').textContent=Math.round(m/STRIDE*4).toLocaleString();
+  const c=$('ctl');
+  if(!cur){c.innerHTML='<button class="btn" id="bStart">산책 시작</button>';$('bStart').onclick=start}
+  else if(paused){c.innerHTML='<button class="btn go" id="bRes">계속</button><button class="btn stop" id="bEnd">종료</button>';$('bRes').onclick=resume;$('bEnd').onclick=end}
+  else{c.innerHTML='<button class="btn sec" id="bPause">일시정지</button><button class="btn stop" id="bEnd">종료</button>';$('bPause').onclick=pause;$('bEnd').onclick=end}
+}
+function start(){
+  startGps();
+  cur={id:Date.now().toString(36),start:Date.now(),dist:0,moving:0,resumeAt:Date.now(),pts:[]};
+  if(lastFix&&Date.now()-lastFix[2]<15000)cur.pts.push(lastFix);
+  liveLine.setLatLngs(cur.pts.map(p=>[p[0],p[1]]));
+  paused=false;follow=true;save(CUR,cur);lockOn();
+  clearInterval(tick);tick=setInterval(render,1000);
+  $('note').textContent='화면이 켜져 있는 동안 기록됩니다. 화면을 끄거나 다른 앱으로 가면 기록이 멈출 수 있어요.';
+  render();toast('산책을 시작했어요 🐕');
+}
+function pause(){cur.moving+=Date.now()-cur.resumeAt;paused=true;cur.paused=true;save(CUR,cur);render();toast('일시정지')}
+function resume(){cur.resumeAt=Date.now();paused=false;cur.paused=false;save(CUR,cur);lockOn();render()}
+function end(){
+  if(!paused)cur.moving+=Date.now()-cur.resumeAt;
+  const w={id:cur.id,start:cur.start,end:Date.now(),dist:Math.round(cur.dist),moving:Math.round(cur.moving/1000),pts:cur.pts};
+  clearInterval(tick);
+  try{wake&&wake.release()}catch(e){};wake=null;
+  if(w.pts.length>=2&&w.dist>=20){walks.push(w);save(KEY,walks);showSummary(w)}
+  else toast('이동 거리가 너무 짧아 저장하지 않았어요');
+  cur=null;paused=false;localStorage.removeItem(CUR);
+  liveLine.setLatLngs([]);drawToday();render();
+  $('note').textContent='기록은 이 폰의 브라우저에만 저장됩니다. ☰ 에서 날짜별 기록과 GPX 내보내기를 볼 수 있어요.';
+}
+
+// ───── 요약 / 기록 ─────
+function openSheet(html){$('sheetIn').innerHTML=html;$('sheet').classList.add('on')}
+$('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').classList.remove('on')};
+function showSummary(w){
+  openSheet(`<h3>산책 완료 🎉</h3>
+  <div class="sum">
+    <div><b>${(w.dist/1000).toFixed(2)} km</b><span>거리</span></div>
+    <div><b>${fmtT(w.moving)}</b><span>시간</span></div>
+    <div><b>${fmtPace(w.moving,w.dist)}</b><span>평균 페이스</span></div>
+    <div><b>${Math.round(w.dist/STEP).toLocaleString()}</b><span>걸음 · 🐾 ${Math.round(w.dist/STRIDE*4).toLocaleString()}</span></div>
+  </div>
+  <div class="row"><button class="btn sec" onclick="DE.gpx('${w.id}')">GPX 저장</button><button class="btn" onclick="DE.close()">확인</button></div>`);
+  showWalk(w,false);
+}
+function showWalk(w,fit=true){
+  viewLayer.clearLayers();
+  const ll=w.pts.map(p=>[p[0],p[1]]);
+  L.polyline(ll,{color:'#E0782A',weight:6,opacity:.95,lineCap:'round'}).addTo(viewLayer);
+  L.circleMarker(ll[0],{radius:6,color:'#fff',fillColor:'#2fb36d',fillOpacity:1,weight:2}).addTo(viewLayer);
+  L.circleMarker(ll[ll.length-1],{radius:6,color:'#fff',fillColor:'#e5484d',fillOpacity:1,weight:2}).addTo(viewLayer);
+  follow=false;map.fitBounds(L.latLngBounds(ll),{padding:[40,40],paddingBottomRight:[40,260]});
+}
+function history(){
+  const by={};walks.slice().reverse().forEach(w=>{(by[dayKey(w.start)]=by[dayKey(w.start)]||[]).push(w)});
+  const days=Object.keys(by);
+  const tot=walks.reduce((a,w)=>a+w.dist,0);
+  let h=`<h3>산책 기록</h3><div class="sum"><div><b>${walks.length}회</b><span>전체 산책</span></div><div><b>${(tot/1000).toFixed(1)} km</b><span>누적 거리</span></div></div>`;
+  if(!days.length)h+='<div class="note">아직 저장된 산책이 없어요.</div>';
+  days.forEach(d=>{
+    const list=by[d],dd=list.reduce((a,w)=>a+w.dist,0);
+    h+=`<div class="day"><h4>${d.replace(/-/g,'.')} · ${list.length}회 · ${(dd/1000).toFixed(2)} km</h4>`;
+    list.forEach(w=>{h+=`<div class="walk"><div class="m"><b>${(w.dist/1000).toFixed(2)} km</b><div>${hm(w.start)}–${hm(w.end)} · ${fmtT(w.moving)} · ${fmtPace(w.moving,w.dist)}</div></div>
+      <button class="chip" onclick="DE.view('${w.id}')">지도</button><button class="chip" onclick="DE.gpx('${w.id}')">GPX</button><button class="chip r" onclick="DE.del('${w.id}')">삭제</button></div>`});
+    h+='</div>';
+  });
+  openSheet(h);
+}
+function gpx(id){
+  const w=walks.find(x=>x.id===id);if(!w)return;
+  const seg=w.pts.map(p=>`<trkpt lat="${p[0]}" lon="${p[1]}"><time>${new Date(p[2]).toISOString()}</time></trkpt>`).join('');
+  const x=`<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="DogEarth" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>DogEarth ${dayKey(w.start)} ${hm(w.start)}</name><trkseg>${seg}</trkseg></trk></gpx>`;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([x],{type:'application/gpx+xml'}));
+  a.download=`dogearth-${dayKey(w.start)}-${hm(w.start).replace(':','')}.gpx`;document.body.appendChild(a);a.click();a.remove();
+}
+window.DE={
+  close:()=>{$('sheet').classList.remove('on')},
+  view:id=>{const w=walks.find(x=>x.id===id);if(w){$('sheet').classList.remove('on');showWalk(w)}},
+  gpx,
+  del:id=>{if(!confirm('이 산책 기록을 삭제할까요? 되돌릴 수 없어요.'))return;walks=walks.filter(x=>x.id!==id);save(KEY,walks);viewLayer.clearLayers();drawToday();history()}
+};
+$('bHist').onclick=history;
+$('bCenter').onclick=()=>{follow=true;viewLayer.clearLayers();if(lastFix)map.setView([lastFix[0],lastFix[1]],17);else startGps()};
+
+// ───── 시작 ─────
+drawToday();
+if(cur){ // 새로고침 후 이어가기
+  paused=!!cur.paused; if(!paused)cur.resumeAt=Date.now();
+  liveLine.setLatLngs(cur.pts.map(p=>[p[0],p[1]]));
+  startGps();lockOn();tick=setInterval(render,1000);toast('진행 중이던 산책을 이어갑니다');
+}else startGps();
+render();
+})();
+</script>
+</body>
+</html>
