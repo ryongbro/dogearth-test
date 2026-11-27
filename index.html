@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>DogEarth · 실제 지도 테스트</title>
-<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='11';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
+<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='12';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
@@ -79,7 +79,7 @@ body.full .panel{left:auto;right:10px;padding:8px 14px;border-radius:14px;cursor
   <button class="ibtn" id="bFull" title="지도 전체 보기">⤢</button>
   <button class="ibtn" id="bHist" title="기록">☰</button>
 </div>
-<div class="zoom"><button id="zIn">+</button><button id="zOut">−</button><div class="lv" id="zLv">17</div></div>
+<div class="zoom" style="display:none"><button id="zIn">+</button><button id="zOut">−</button><div class="lv" id="zLv">17</div></div>
 
 <div class="panel">
   <div class="stats">
@@ -126,8 +126,14 @@ map.on('load',()=>{
   styleReady=true;window.DEX&&DEX.onMapReady&&DEX.onMapReady()});
 map.on('zoom',()=>{document.getElementById('zLv').textContent=(Math.round(map.getZoom()*2)/2)});
 let meMarker=null, follow=true, liveCoords=[];
-map.on('dragstart',()=>follow=false);
-map.on('rotatestart',e=>{if(e.originalEvent)follow=false});
+let touchN=0,touchEnd=0;const mc=document.getElementById('map');
+mc.addEventListener('touchstart',e=>{touchN=e.touches.length},{passive:true,capture:true});
+mc.addEventListener('touchmove',e=>{touchN=Math.max(touchN,e.touches.length)},{passive:true,capture:true});
+mc.addEventListener('touchend',e=>{if(!e.touches.length){touchN=0;touchEnd=Date.now()}},{passive:true,capture:true});
+mc.addEventListener('wheel',()=>{touchEnd=Date.now()+300},{passive:true});
+const userBusy=()=>touchN>0||Date.now()-touchEnd<350;
+map.on('dragstart',e=>{if(touchN<2)follow=false});
+
 function circlePoly(c,r){const pts=[];for(let i=0;i<=40;i++){const a=i/40*2*Math.PI,dy=r*Math.cos(a)/111320,dx=r*Math.sin(a)/(111320*Math.cos(c[0]*Math.PI/180));pts.push([c[1]+dx,c[0]+dy])}return{type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Polygon',coordinates:[pts]},properties:{}}]}}
 function fitPts(pts,extra){if(!pts.length)return;let a=[1e9,1e9],b=[-1e9,-1e9];pts.forEach(p=>{a[0]=Math.min(a[0],p[0]);a[1]=Math.min(a[1],p[1]);b[0]=Math.max(b[0],p[0]);b[1]=Math.max(b[1],p[1])});
   const ph=document.querySelector('.panel').getBoundingClientRect();map.fitBounds([[a[1],a[0]],[b[1],b[0]]],Object.assign({padding:{top:90,bottom:innerHeight-ph.top+30,left:40,right:60},maxZoom:18.5,duration:700},extra||{}))}
@@ -309,7 +315,7 @@ function placeFollow(ll,anim){if(Date.now()<easing||map.isMoving&&map.isMoving()
 let nlt=performance.now();
 (function navLoop(n){const dt=Math.min(.1,(n-nlt)/1000);nlt=n;
   if(nav==='head'){const still=Date.now()-movedAt>6000;const hd=(still&&compass!=null)?compass:course;if(hd!=null){let df=((hd-navB)%360+540)%360-180;if(Math.abs(df)>.3)navB+=df*Math.min(1,dt*2.2)}}
-  const d=(window.DEX&&DEX.disp)||lastFix;if(follow&&d&&!zooming&&Date.now()>easing&&!document.body.classList.contains('full'))placeFollow(d,false);
+  const d=(window.DEX&&DEX.disp)||lastFix;if(follow&&d&&!userBusy()&&Date.now()>easing&&!document.body.classList.contains('full'))placeFollow(d,false);
   requestAnimationFrame(navLoop)})(performance.now());
 
 // ───── 시작 ─────
@@ -324,6 +330,6 @@ render();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="dogkit.js?v=9"></script>
-<script src="extras-ml.js?v=11"></script>
+<script src="extras-ml.js?v=12"></script>
 </body>
 </html>
