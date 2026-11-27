@@ -40,17 +40,19 @@ function buildScene(){if(!window.THREE)return false;const cv=document.createElem
  R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});R.setPixelRatio(1);R.setSize(300,300,false);
  SC=new THREE.Scene();SC.add(new THREE.HemisphereLight(0xffffff,0x8a8070,.95));const dl=new THREE.DirectionalLight(0xffffff,.7);dl.position.set(-2,5,3);SC.add(dl);
  CAM=new THREE.OrthographicCamera(-1.3,1.3,1.3,-1.3,.1,50);CAM.position.set(0,5.2,4.2);CAM.lookAt(0,.35,0);
- const icon=L.divIcon({className:"dogm",html:"",iconSize:[150,150],iconAnchor:[75,98]});
+ const icon=L.divIcon({className:"dogm",html:"",iconSize:[150,150],iconAnchor:[75,88]});
  marker=L.marker([37.5665,126.978],{icon,interactive:false,zIndexOffset:500});marker.on("add",()=>{const el=marker.getElement();el.innerHTML="";el.appendChild(cv)});
  setDog();return true}
-function setDog(){if(!SC)return;if(dog)SC.remove(dog.g);dog=buildDog(prof);const B=specOf(prof);dog.g.scale.setScalar(1.25/Math.max(.7,B.s*1.0));SC.add(dog.g);dog.heading=-Math.PI/2;dog.g.rotation.y=dog.heading}
+function setDog(){if(!SC)return;if(dog)SC.remove(dog.g);dog=buildDog(prof);const B=specOf(prof);dog.base=1/Math.max(.7,B.s);dog.g.scale.setScalar(dog.base*.6);SC.add(dog.g);dog.heading=-Math.PI/2;dog.g.rotation.y=dog.heading}
 DEX.onFix=(lat,lng,acc,t)=>{if(!marker&&!buildScene())return;target=[lat,lng];if(!disp){disp=[lat,lng];marker.setLatLng(disp).addTo(map);document.body.classList.add("dogon")}
  if(prevFix){const d=map.distance(prevFix,[lat,lng]),dt=Math.max(.5,(t-prevFix[2])/1000);if(d>1.2&&d/dt<8){speed=d/dt;lastMove=Date.now()}}prevFix=[lat,lng,t];
  if(!DEX.greeted){DEX.greeted=1;showGreet(lat,lng)}};
 let lt=performance.now();
 function loop(n){const dt=Math.min(.05,(n-lt)/1000);lt=n;if(dog&&disp&&target){const d=map.distance(disp,target);
   if(d>60){disp=target.slice()}else{const k=Math.min(1,dt*1.6);const nl=[disp[0]+(target[0]-disp[0])*k,disp[1]+(target[1]-disp[1])*k];
-   if(d>.4){const p1=map.project(disp,20),p2=map.project(nl,20),dx=p2.x-p1.x,dy=p2.y-p1.y;if(Math.hypot(dx,dy)>.01){const want=Math.atan2(-dy,dx);let df=want-dog.heading;df=Math.atan2(Math.sin(df),Math.cos(df));dog.heading+=df*Math.min(1,dt*6);dog.g.rotation.y=dog.heading}}disp=nl}
+   if(d>.4){const r=Math.PI/180,y=Math.sin((nl[1]-disp[1])*r)*Math.cos(nl[0]*r),x=Math.cos(disp[0]*r)*Math.sin(nl[0]*r)-Math.sin(disp[0]*r)*Math.cos(nl[0]*r)*Math.cos((nl[1]-disp[1])*r);if(Math.hypot(x,y)>1e-12)dog.wb=Math.atan2(y,x)}disp=nl}
+  DEX.disp=disp;if(dog.wb!=null){const sa=dog.wb+(map.getBearing?map.getBearing():0)*Math.PI/180,want=Math.atan2(Math.cos(sa),Math.sin(sa));let df=want-dog.heading;df=Math.atan2(Math.sin(df),Math.cos(df));dog.heading+=df*Math.min(1,dt*6);dog.g.rotation.y=dog.heading}
+const zs=Math.max(.32,Math.min(.85,.6*Math.pow(2,(map.getZoom()-17)*.45)));dog.g.scale.setScalar(dog.base*zs);
   marker.setLatLng(disp);const moving=Date.now()-lastMove<3500&&d>.25;animDog(dog,dt*(moving?Math.min(1.6,.6+speed/1.4):1),moving,n/1000);R.render(SC,CAM)}
  requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
