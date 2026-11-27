@@ -4,8 +4,12 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ld=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}};
 const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-const PK="de.prof.v1";
-let prof=ld(PK,{dog:"Weesky",breed:"husky",coat:"#2c2b2a",look:{mask:"husky",eye:"#6fa8dc",collar:"#2d55e8"}});
+let DOGS=ld("de.dogs.v1",null);if(!Array.isArray(DOGS)||!DOGS.length){const old=ld("de.prof.v1",{dog:"Weesky",breed:"husky",coat:"#2c2b2a",look:{mask:"husky",eye:"#6fa8dc",collar:"#2d55e8"}});DOGS=[Object.assign({id:"g"+Date.now().toString(36),age:6,sex:"m",neut:1,wt:23,size:"L",coatLen:"double",chip:1,avoid:{breeds:[],sizes:[],sex:[],intact:0},cautions:[],noTouch:[],tagType:"",tagLink:"",verify:1},old)];sv("de.dogs.v1",DOGS)}
+let WITH=ld("de.with",[DOGS[0].id]).filter(id=>DOGS.some(d=>d.id===id));if(!WITH.length)WITH=[DOGS[0].id];
+let prof=DOGS.find(d=>d.id===WITH[0])||DOGS[0];
+const withDogs=()=>WITH.map(id=>DOGS.find(d=>d.id===id)).filter(Boolean);
+const names=()=>{const n=withDogs().map(d=>d.dog);return n.length>1?n.slice(0,-1).join(", ")+"랑 "+n[n.length-1]:n[0]||""};
+DEX.dogsApi={get list(){return DOGS},get with(){return WITH.slice()},setWith(ids){WITH=ids.filter(id=>DOGS.some(d=>d.id===id));if(!WITH.length)WITH=[DOGS[0].id];sv("de.with",WITH);prof=withDogs()[0];setDog()},save(){sv("de.dogs.v1",DOGS);prof=withDogs()[0]||DOGS[0];setDog()},names};
 const toast=m=>DEX.toast(m);
 
 document.head.insertAdjacentHTML("beforeend",`<style>
@@ -31,11 +35,12 @@ document.head.insertAdjacentHTML("beforeend",`<style>
 </style>`);
 document.body.insertAdjacentHTML("beforeend",`<div id="greetBox"></div><button class="clk" id="clk" hidden>딸깍<small>길게: 휘슬</small></button>`);
 // 상단 버튼 추가
-$("bHist").insertAdjacentHTML("beforebegin",`<button class="ibtn pbtn" id="bDog" title="내 강아지">🐶</button><button class="ibtn" id="bPad" title="소리·트레이닝">🔊</button>`);
+$("bHist").insertAdjacentHTML("beforebegin",`<button class="ibtn" id="bPad" title="소리·트레이닝">🔊</button>`);
 
 /* ---------- 3D 강아지 (지도 안 3D 레이어) ---------- */
 const map=DEX.map;let dog=null,SC=null,RND=null,CAM=null,disp=null,target=null,lastMove=0,speed=0,prevFix=null,layerOn=false;
-function setDog(){if(!SC)return;if(dog)SC.remove(dog.g);dog=buildDog(prof);const B=specOf(prof);dog.base=1/Math.max(.7,B.s);SC.add(dog.g);dog.heading=0;dog.wb=null}
+function setDog(){if(!SC)return;if(dog)SC.remove(dog.g);const list=withDogs();const G=new THREE.Group(),maxS=Math.max(...list.map(p=>specOf(p).s));const parts=list.map((p,i)=>{const d=buildDog(p);d.ph+=i*1.7;const off=(i-(list.length-1)/2);d.g.position.set(-Math.abs(off)*.35,0,off*.95);G.add(d.g);return d});
+ dog={g:G,parts,base:1/Math.max(.7,maxS)*(list.length>1?.85:1),heading:0,wb:null};SC.add(G)}
 const dogLayer={id:"dog3d",type:"custom",renderingMode:"3d",
  onAdd(m,gl){CAM=new THREE.Camera();SC=new THREE.Scene();SC.add(new THREE.HemisphereLight(0xffffff,0x8a8070,1));const dl=new THREE.DirectionalLight(0xffffff,.7);dl.position.set(-2,6,3);SC.add(dl);
   RND=new THREE.WebGLRenderer({canvas:m.getCanvas(),context:gl,antialias:true});RND.autoClear=false;setDog()},
@@ -54,30 +59,9 @@ function loop(n){const dt=Math.min(.05,(n-lt)/1000);lt=n;if(dog&&disp&&target){c
   if(d>60){disp=target.slice()}else{const k=Math.min(1,dt*1.6);const nl=[disp[0]+(target[0]-disp[0])*k,disp[1]+(target[1]-disp[1])*k];
    if(d>.4){const r=Math.PI/180,y=Math.sin((nl[1]-disp[1])*r)*Math.cos(nl[0]*r),x=Math.cos(disp[0]*r)*Math.sin(nl[0]*r)-Math.sin(disp[0]*r)*Math.cos(nl[0]*r)*Math.cos((nl[1]-disp[1])*r);if(Math.hypot(x,y)>1e-12)dog.wb=Math.atan2(y,x)}disp=nl}
   DEX.disp=disp;if(dog.wb!=null){const want=Math.PI/2-dog.wb;let df=want-dog.heading;df=Math.atan2(Math.sin(df),Math.cos(df));dog.heading+=df*Math.min(1,dt*6);dog.g.rotation.y=dog.heading}
-  const moving=Date.now()-lastMove<3500&&d>.25;animDog(dog,dt*(moving?Math.min(1.6,.6+speed/1.4):1),moving,n/1000);map.triggerRepaint()}
+  const moving=Date.now()-lastMove<3500&&d>.25;dog.parts.forEach(p=>animDog(p,dt*(moving?Math.min(1.6,.6+speed/1.4):1),moving,n/1000));map.triggerRepaint()}
  requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
-
-/* ---------- 내 강아지 (이름·견종·꾸미기) ---------- */
-const BKEYS=Object.keys(BREEDS);const COATS2=["","#2c2b2a","#5c6168","#f6f4ef","#e8d6b8","#c9733a","#7a4a2b"];const ACC=["#2d55e8","#c0453a","#E0782A","#2fb36d","#e7a1b0","#141619","#f4efe6"];
-function openDog(){const d=JSON.parse(JSON.stringify(prof));d.look=d.look||{};
- const sw=(k,cols)=>`<div class="sw"><button class="no ${d.look[k]?"":"on"}" data-k="${k}" data-v="">없음</button>${cols.map(c=>`<button class="${d.look[k]===c?"on":""}" data-k="${k}" data-v="${c}" style="background:${c}"></button>`).join("")}</div>`;
- const ch=(k,opts)=>`<div class="chips">${opts.map(([v,l])=>`<button class="${(d.look[k]||"")===v?"on":""}" data-k="${k}" data-v="${v}">${l}</button>`).join("")}</div>`;
- const draw=()=>{DEX.openSheet(`<h3>내 강아지</h3><label class="lab">이름</label><input class="inp" id="dn" value="${esc(d.dog)}" maxlength="16">
- <label class="lab">견종</label><select class="sel" id="db">${BKEYS.map(k=>`<option value="${k}" ${d.breed===k?"selected":""}>${esc(BREEDS[k].n[0])}</option>`).join("")}</select>
- <label class="lab">털색</label><div class="sw">${COATS2.map(c=>`<button class="${c?"":"no"} ${(d.coat||"")===c?"on":""}" data-coat="${c}" ${c?`style="background:${c}"`:""}>${c?"":"기본"}</button>`).join("")}</div>
- <label class="lab">얼굴 무늬</label>${ch("mask",[["","기본"],["none","없음"],["husky","허스키"],["cheek","볼"],["blaze","이마 줄"]])}
- <label class="lab">귀</label>${ch("ear",[["","기본"],["up","선 귀"],["flop","접힌 귀"],["half","반접힘"]])}
- <label class="lab">눈 색</label>${sw("eye",["#3b2414","#c98a2b","#6fa8dc","#1a1a1a"])}
- <label class="lab">목줄</label>${sw("collar",ACC)}<label class="lab">하네스</label>${sw("harness",ACC)}<label class="lab">반다나</label>${sw("bandana",ACC)}
- <label class="lab">모자</label>${ch("hat",[["","없음"],["beanie","비니"],["cap","캡"]])}
- <div class="row"><button class="btn" id="dsave">저장</button></div><div class="note">저장하면 지도 위 강아지에 바로 반영됩니다.</div>`);
-  const keep=()=>{d.dog=$("dn").value.trim()||"Weesky";d.breed=$("db").value};
-  document.querySelectorAll("#sheetIn [data-k]").forEach(b=>b.onclick=()=>{keep();const k=b.dataset.k,v=b.dataset.v;if(v)d.look[k]=v;else delete d.look[k];draw()});
-  document.querySelectorAll("#sheetIn [data-coat]").forEach(b=>b.onclick=()=>{keep();d.coat=b.dataset.coat;draw()});
-  $("db").onchange=()=>{keep();draw()};
-  $("dsave").onclick=()=>{keep();prof=d;sv(PK,prof);setDog();$("sheet").classList.remove("on");toast(`${prof.dog}의 새 모습을 저장했어요 ✨`)}};draw()}
-$("bDog").onclick=openDog;
 
 /* ---------- 인사 카드 (실제 날씨·미세먼지: Open-Meteo) ---------- */
 const WMO=c=>c===0?["맑음","clear"]:c<=3?["구름 조금","cloud"]:c<=48?["안개","fog"]:c<=67||(c>=80&&c<=82)?["비","rain"]:c<=77||c===85||c===86?["눈","snow"]:c>=95?["뇌우","rain"]:["흐림","cloud"];
@@ -96,12 +80,12 @@ function suit(w){const dbl=["husky","jindo","shiba","corgi","pom","gsd","golden"
  if(!tips.length)tips.push("바람도 선선하고 산책하기 딱 좋아요.");return{sc:Math.max(5,Math.min(100,sc)),tips}}
 async function showGreet(lat,lng){const box=$("greetBox"),h=new Date().getHours(),hi=h<5?"늦은 밤이에요":h<11?"좋은 아침이에요":h<17?"좋은 오후예요":"좋은 저녁이에요";
  const td=new Date().toDateString(),seen=ld("de.greet","")===td;sv("de.greet",td);
- box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(prof.dog)} 보호자님</h3><p>날씨를 확인하는 중…</p></div>`;$("gx").onclick=()=>box.innerHTML="";
+ box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(names())} 보호자님</h3><p>날씨를 확인하는 중…</p></div>`;$("gx").onclick=()=>box.innerHTML="";
  const w=await fetchWx(lat,lng);if(!box.firstChild)return;
- if(!w){box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(prof.dog)} 보호자님</h3><p>오늘도 즐거운 산책 되세요 🐾</p></div>`;$("gx").onclick=()=>box.innerHTML="";setTimeout(()=>box.innerHTML="",7000);return}
+ if(!w){box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(names())} 보호자님</h3><p>오늘도 즐거운 산책 되세요 🐾</p></div>`;$("gx").onclick=()=>box.innerHTML="";setTimeout(()=>box.innerHTML="",7000);return}
  const {sc,tips}=suit(w),col=sc>=75?"#2fb36d":sc>=50?"#e3a008":"#e5484d",lab=sc>=75?"산책 좋음":sc>=50?"짧게 추천":"실내 놀이 추천";
  const today=DEX.walks().filter(x=>new Date(x.start).toDateString()===td),km=today.reduce((a,x)=>a+x.dist,0)/1000;
- box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(prof.dog)} 보호자님</h3><span class="score" style="background:${col}22;color:${col}">● ${lab} · ${sc}</span>
+ box.innerHTML=`<div class="greet"><button class="x2" id="gx">×</button><h3>${hi}, ${esc(names())} 보호자님</h3><span class="score" style="background:${col}22;color:${col}">● ${lab} · ${sc}</span>
  <p>${w.sky} ${w.t}°C (체감 ${w.feel}°C) · 미세먼지 ${w.pmL}</p>${(seen?tips.slice(0,1):tips.slice(0,2)).map(x=>`<p>${x}</p>`).join("")}${today.length?`<p>🐾 오늘 ${today.length}번 · ${km.toFixed(2)}km 걸었어요</p>`:""}</div>`;
  $("gx").onclick=()=>box.innerHTML="";setTimeout(()=>{const g=box.firstChild;if(g){g.style.transition="opacity .4s";g.style.opacity=0;setTimeout(()=>box.innerHTML="",420)}},seen?7000:14000)}
 setTimeout(()=>{if(!DEX.greeted){DEX.greeted=1;showGreet(37.5665,126.978)}},9000);

@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>DogEarth · 실제 지도 테스트</title>
-<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='12';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
+<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='13';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
@@ -27,7 +27,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 .dot.ok{background:var(--green)}.dot.mid{background:#e3b341}.dot.bad{background:var(--red)}
 .sp{flex:1}
 .ibtn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--tx);font-size:18px;display:grid;place-items:center}
-.panel{box-shadow:0 6px 24px rgba(0,0,0,.12);position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:500;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:10px 12px;backdrop-filter:blur(10px);transition:all .25s}
+.panel{box-shadow:0 6px 24px rgba(0,0,0,.12);position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 64px);z-index:500;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:10px 12px;backdrop-filter:blur(10px);transition:all .25s}
 .stats{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr;gap:4px;text-align:center;align-items:end}
 .big{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1;text-align:left}
 .big small{font-size:13px;color:var(--sub);font-weight:600;margin-left:4px}
@@ -77,7 +77,7 @@ body.full .panel{left:auto;right:10px;padding:8px 14px;border-radius:14px;cursor
   <div class="sp"></div>
   <button class="ibtn" id="bCenter" title="내 위치 · 진행 방향">◎</button>
   <button class="ibtn" id="bFull" title="지도 전체 보기">⤢</button>
-  <button class="ibtn" id="bHist" title="기록">☰</button>
+  <button class="ibtn" id="bHist" title="기록" style="display:none">☰</button>
 </div>
 <div class="zoom" style="display:none"><button id="zIn">+</button><button id="zOut">−</button><div class="lv" id="zLv">17</div></div>
 
@@ -210,7 +210,7 @@ function render(){
   $('vSteps').textContent=Math.round(m/STEP).toLocaleString();
   $('vPaw').textContent=Math.round(m/STRIDE*4).toLocaleString();
   const c=$('ctl');
-  if(!cur){c.innerHTML='<button class="btn" id="bStart">산책 시작</button>';$('bStart').onclick=start}
+  if(!cur){c.innerHTML='<button class="btn" id="bStart">산책 시작</button>';$('bStart').onclick=()=>window.DEX&&DEX.beforeStart?DEX.beforeStart(start):start()}
   else if(paused){c.innerHTML='<button class="btn go" id="bRes">계속</button><button class="btn stop" id="bEnd">종료</button>';$('bRes').onclick=resume;$('bEnd').onclick=end}
   else{c.innerHTML='<button class="btn sec" id="bPause">일시정지</button><button class="btn stop" id="bEnd">종료</button>';$('bPause').onclick=pause;$('bEnd').onclick=end}
 }
@@ -329,7 +329,8 @@ render();
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="dogkit.js?v=9"></script>
-<script src="extras-ml.js?v=12"></script>
+<script src="dogkit.js?v=13"></script>
+<script src="extras-ml.js?v=13"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

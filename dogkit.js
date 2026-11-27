@@ -49,8 +49,8 @@ function nets(f,b0,b1,h,colorAt){
  const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.BufferAttribute(pos,3));geo.setAttribute("normal",new THREE.BufferAttribute(N,3));geo.setAttribute("color",new THREE.BufferAttribute(col,3));geo.setIndex(I);return geo}
 const rgb=h=>{const c=new THREE.Color(h);return[c.r,c.g,c.b]};
 const lum3=c=>c[0]*.299+c[1]*.587+c[2]*.114;const mix3=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
-const LOOKDEF={ear:"auto",eye:"",nose:"",mask:"auto",spots:0,socks:"auto",tip:"auto",tail:"auto",collar:"",harness:"",bandana:"",hat:""};
-function lookOf(p){const l=Object.assign({},LOOKDEF,(p&&typeof p.look==="object"&&p.look)||{});for(const k in LOOKDEF)if(typeof l[k]!==typeof LOOKDEF[k])l[k]=LOOKDEF[k];["eye","nose","collar","harness","bandana"].forEach(k=>{if(l[k]&&!/^#[0-9a-f]{6}$/i.test(l[k]))l[k]=""});return l}
+const LOOKDEF={ear:"auto",eye:"",nose:"",mask:"auto",spots:0,socks:"auto",tip:"auto",tail:"auto",collar:"",harness:"",bandana:"",hat:"",scarf:""};
+function lookOf(p){const l=Object.assign({},LOOKDEF,(p&&typeof p.look==="object"&&p.look)||{});for(const k in LOOKDEF)if(typeof l[k]!==typeof LOOKDEF[k])l[k]=LOOKDEF[k];["eye","nose","collar","harness","bandana","scarf"].forEach(k=>{if(l[k]&&!/^#[0-9a-f]{6}$/i.test(l[k]))l[k]=""});return l}
 function specOf(p){const B0=(BREEDS[p.breed]||BREEDS.mix).s,L=lookOf(p),B={...B0};
  if(L.ear!=="auto"&&["up","flop","half","bat"].includes(L.ear)){B.ear=L.ear;if(!B0.er||B0.ear!==L.ear)B.er=L.ear==="up"?1:L.ear==="bat"?1:1}
  if(L.mask!=="auto")B.mask=L.mask==="none"?null:L.mask;
@@ -116,7 +116,17 @@ function addAcc(par,m,L){const a=m.acc;if(!a)return;const Z=new THREE.Vector3(0,
  if(L.harness){const hm=accMat(L.harness,.55);[0,-.16].forEach(o=>{const h=new THREE.Mesh(torusG,hm);h.rotation.y=Math.PI/2;h.scale.set(a.crz*1.04,a.cry*1.04,1);h.position.set(a.cx+o*(a.crz*2),a.cyc,0);par.add(h)});const st=new THREE.Mesh(torusG,hm);st.scale.setScalar(a.crz*.28);st.position.set(a.cx-a.crz*.16,a.cyc+a.cry*1.04+a.crz*.2,0);par.add(st)}
  if(L.hat==="beanie"||L.hat==="cap"){const hc=L.hat==="beanie"?"#c0453a":"#2d55e8",hs=m.hs;const h=new THREE.Mesh(hemiG,accMat(hc,.8));h.scale.set(hs*.34,hs*.26,hs*.34);h.position.set(a.hx,a.htop-hs*.1,0);par.add(h);
   if(L.hat==="beanie"){const pm=new THREE.Mesh(sphSmooth,accMat("#f4efe6",.9));pm.scale.setScalar(hs*.1);pm.position.set(a.hx,a.htop+hs*.15,0);par.add(pm)}
-  else{const br=new THREE.Mesh(brimG,accMat(hc,.8));br.scale.set(hs*.3,1,hs*.26);br.position.set(a.hx+hs*.26,a.htop-hs*.09,0);br.rotation.z=-.12;par.add(br)}}}
+  else{const br=new THREE.Mesh(brimG,accMat(hc,.8));br.scale.set(hs*.3,1,hs*.26);br.position.set(a.hx+hs*.26,a.htop-hs*.09,0);br.rotation.z=-.12;par.add(br)}}
+ if(L.hat==="santa"){const hs=m.hs,g=new THREE.Group();g.position.set(a.hx-hs*.02,a.htop-hs*.08,0);g.rotation.z=.5;par.add(g);
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(hs*.3,hs*.62,20),accMat("#c8202b",.75));cone.position.y=hs*.3;g.add(cone);
+  const rim=new THREE.Mesh(torusG,accMat("#f6f3ee",.95));rim.rotation.x=Math.PI/2;rim.scale.set(hs*.31,hs*.31,hs*1.6);g.add(rim);
+  const pom=new THREE.Mesh(sphSmooth,accMat("#f6f3ee",.95));pom.scale.setScalar(hs*.1);pom.position.y=hs*.63;g.add(pom)}
+ if(L.hat==="antler"){const hs=m.hs,brn=accMat("#8a5a33",.8),stick=new THREE.CylinderGeometry(1,1,1,8);[1,-1].forEach(s=>{const g=new THREE.Group();g.position.set(a.hx-hs*.05,a.htop-hs*.05,s*hs*.2);g.rotation.x=-s*.35;par.add(g);
+  const m1=new THREE.Mesh(stick,brn);m1.scale.set(hs*.035,hs*.42,hs*.035);m1.position.y=hs*.21;g.add(m1);
+  [[.24,.5],[.34,-.6]].forEach(([y,r])=>{const b=new THREE.Mesh(stick,brn);b.scale.set(hs*.03,hs*.2,hs*.03);b.position.set(Math.sin(r)*hs*.08,y*hs+hs*.06,0);b.rotation.z=-r;g.add(b)});
+  const tip=new THREE.Mesh(sphSmooth,brn);tip.scale.setScalar(hs*.045);tip.position.y=hs*.43;g.add(tip)})}
+ if(L.scarf){const sc=accMat(L.scarf,.9);const c=new THREE.Mesh(new THREE.TorusGeometry(1,.17,10,28),sc);c.scale.set(a.nr*1.08,a.nr*1.08,a.nr*1.5);c.position.set(a.nc[0],a.nc[1],0);c.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(a.nd[0],a.nd[1],0));par.add(c);
+  [0,1].forEach(i=>{const t=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),i?accMat("#f6f3ee",.95):sc);t.scale.set(a.nr*.32,a.nr*.9,a.nr*.12);t.position.set(a.nc[0]+a.nd[1]*a.nr*1.05+a.nr*.05,a.nc[1]-a.nd[0]*a.nr*1.05-a.nr*.45-i*a.nr*.42,a.nr*.55);t.rotation.z=.15;if(i)t.scale.y=a.nr*.12;par.add(t)})}}
 const pawMat=c=>{const k=c.join();return pawMats[k]||(pawMats[k]=new THREE.MeshStandardMaterial({color:new THREE.Color(c[0],c[1],c[2]),roughness:.8}))};
 function buildDog(p){const B=specOf(p),m=dogModel(p),L=lookOf(p),g=new THREE.Group(),root=new THREE.Group(),SC=DS*B.s;g.add(root);root.scale.setScalar(SC);
  const Ln=B.len,W=B.w,H=B.leg,bh=B.bh;const body=new THREE.Group();body.position.set(-Ln*.3,H,0);root.add(body);const inner=new THREE.Group();inner.position.set(Ln*.3,-H,0);body.add(inner);inner.add(new THREE.Mesh(m.body,furMat));
