@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>DogEarth · 실제 지도 테스트</title>
-<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='18';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
+<script>/* 새 버전이 있으면 자동으로 새로고침 */(()=>{const B='19';fetch('version.txt?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==B&&!sessionStorage.getItem('de.rl'+v)){sessionStorage.setItem('de.rl'+v,1);location.replace(location.pathname+'?v='+v)}}).catch(()=>{})})();</script>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
@@ -109,8 +109,8 @@ let walks=load(KEY,[]);           // [{id,start,end,dist,moving,pts:[[lat,lng,t]
 let cur=load(CUR,null);           // 진행 중 산책(새로고침 대비)
 
 // ───── 지도 ─────
-const PITCH=(()=>{try{return JSON.parse(localStorage.getItem('de.pitch'))||{north:35,head:58}}catch(e){return{north:35,head:58}}})();let NORTH_PITCH=PITCH.north,HEAD_PITCH=PITCH.head;
-const map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:[126.978,37.5665],zoom:17,pitch:NORTH_PITCH,bearing:0,maxPitch:70,minZoom:12,maxZoom:19.5,attributionControl:{compact:true}});
+const PITCH=(()=>{try{const v=JSON.parse(localStorage.getItem('de.pitch2'));return v||{north:0,head:50}}catch(e){return{north:0,head:50}}})();let NORTH_PITCH=PITCH.north,HEAD_PITCH=PITCH.head;
+const map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:[126.978,37.5665],zoom:17,pitch:NORTH_PITCH,bearing:0,maxPitch:70,touchPitch:true,dragRotate:true,minZoom:12,maxZoom:19.5,attributionControl:{compact:true}});
 map.addControl(new maplibregl.ScaleControl({unit:'metric',maxWidth:80}),'top-left');
 const LL=a=>[a[1],a[0]];
 const EMPTY={type:'FeatureCollection',features:[]};
@@ -309,9 +309,9 @@ function setFull(on){document.body.classList.toggle('full',on);$('bFull').classL
    setTimeout(()=>{if(pts.length>1)fitPts(pts,{bearing:0,pitch:20});else map.easeTo({zoom:Math.max(14,map.getZoom()-2),bearing:0,pitch:20,padding:{top:0,bottom:0,left:0,right:0}})},260)}
   else if(lastFix)setNav(nav,false)}
 // ---- 진행 방향 · 따라가기 ----
-function savePitch(v){PITCH[nav]=Math.round(v);try{localStorage.setItem('de.pitch',JSON.stringify(PITCH))}catch(e){}const r=document.getElementById('tilt');if(r&&+r.value!==PITCH[nav])r.value=PITCH[nav];const l=document.getElementById('tiltv');if(l)l.textContent=PITCH[nav]+'°'}
+function savePitch(v){PITCH[nav]=Math.round(v);try{localStorage.setItem('de.pitch2',JSON.stringify(PITCH))}catch(e){}const r=document.getElementById('tilt');if(r&&+r.value!==PITCH[nav])r.value=PITCH[nav];const l=document.getElementById('tiltv');if(l)l.textContent=PITCH[nav]+'°'}
 map.on('pitchend',e=>{if(e.originalEvent||e.fromSlider)savePitch(map.getPitch())});
-document.body.insertAdjacentHTML('beforeend',`<div class="tiltc"><span>⛰</span><input type="range" id="tilt" min="0" max="70" step="1" value="${PITCH.north}" aria-label="지도 기울기"><b id="tiltv">${PITCH.north}°</b></div>`);
+document.body.insertAdjacentHTML('beforeend',`<div class="tiltc" style="display:none"><span>⛰</span><input type="range" id="tilt" min="0" max="70" step="1" value="${PITCH.north}" aria-label="지도 기울기"><b id="tiltv">${PITCH.north}°</b></div>`);
 {const r=document.getElementById('tilt');r.addEventListener('input',()=>{map.setPitch(+r.value);document.getElementById('tiltv').textContent=r.value+'°'});r.addEventListener('change',()=>savePitch(+r.value));
  ['touchstart','pointerdown'].forEach(ev=>r.addEventListener(ev,e=>e.stopPropagation(),{passive:true}))}
 map.on('pitch',()=>{const r=document.getElementById('tilt');if(r&&document.activeElement!==r){r.value=Math.round(map.getPitch());document.getElementById('tiltv').textContent=Math.round(map.getPitch())+'°'}});
@@ -340,7 +340,7 @@ render();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="dogkit.js?v=13"></script>
-<script src="extras-ml.js?v=18"></script>
-<script src="app.js?v=18"></script>
+<script src="extras-ml.js?v=19"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>
