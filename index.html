@@ -216,7 +216,7 @@ function start(){
   paused=false;follow=true;save(CUR,cur);lockOn();
   clearInterval(tick);tick=setInterval(render,1000);
   $('note').textContent='화면이 켜져 있는 동안 기록됩니다. 화면을 끄거나 다른 앱으로 가면 기록이 멈출 수 있어요.';
-  render();toast('산책을 시작했어요 🐕');window.DEX&&DEX.onStart&&DEX.onStart();
+  render();toast('산책을 시작했어요 🐕');setNav('head',false);window.DEX&&DEX.onStart&&DEX.onStart();
 }
 function pause(){cur.moving+=Date.now()-cur.resumeAt;paused=true;cur.paused=true;save(CUR,cur);render();toast('일시정지')}
 function resume(){cur.resumeAt=Date.now();paused=false;cur.paused=false;save(CUR,cur);lockOn();render()}
@@ -288,9 +288,11 @@ window.DE={
 $('bHist').onclick=history;
 $('zIn').onclick=()=>map.zoomIn(1);$('zOut').onclick=()=>map.zoomOut(1);
 $('bCenter').onclick=()=>{viewLayer.clearLayers();if(!lastFix){startGps();return}
-  if(!follow){follow=true;placeFollow([lastFix[0],lastFix[1]],true);return}
-  if(nav==='north'){nav='head';$('bCenter').textContent='➤';$('bCenter').classList.add('on');map.setPitch(40,{animate:true,duration:.6});askCompass();toast('진행 방향 보기 — 가는 쪽이 위로 와요')}
-  else{nav='north';$('bCenter').textContent='◎';$('bCenter').classList.remove('on');map.resetNorthPitch();toast('북쪽 고정 보기')}};
+  setNav(nav==='north'?'head':'north',true)};
+function setNav(m,say){follow=true;if(document.body.classList.contains('full'))setFull(false);nav=m;
+  if(m==='head'){$('bCenter').textContent='➤';$('bCenter').classList.add('on');if(course!=null){navB=-course;map.setBearing(navB)}map.setPitch(40,{animate:true,duration:.6});askCompass();if(say)toast('진행 방향 보기 — 가는 쪽이 위로 와요')}
+  else{$('bCenter').textContent='◎';$('bCenter').classList.remove('on');navB=0;map.resetNorthPitch();if(say)toast('북쪽 고정 보기')}
+  if(lastFix)placeFollow([lastFix[0],lastFix[1]],true)}
 $('bFull').onclick=()=>{const on=!document.body.classList.contains('full');setFull(on)};
 document.querySelector('.panel').addEventListener('click',e=>{if(document.body.classList.contains('full')){e.stopPropagation();setFull(false)}},true);
 function setFull(on){document.body.classList.toggle('full',on);$('bFull').classList.toggle('on',on);follow=false;
@@ -324,6 +326,6 @@ render();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="dogkit.js?v=6"></script>
-<script src="extras.js?v=6"></script>
+<script src="extras.js?v=7"></script>
 </body>
 </html>
