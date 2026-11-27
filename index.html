@@ -15,6 +15,7 @@
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;overflow:hidden}
 #map{position:fixed;inset:0}
 .leaflet-container{background:#1a1d24}
+.dark-tiles{filter:invert(1) hue-rotate(185deg) brightness(.92) contrast(.88) saturate(.6)}
 .top{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:500;display:flex;gap:8px;align-items:center}
 .brand{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-weight:700;letter-spacing:-.2px;backdrop-filter:blur(8px)}
 .brand b{color:var(--blue2)}
@@ -96,9 +97,9 @@ let cur=load(CUR,null);           // 진행 중 산책(새로고침 대비)
 
 // ───── 지도 ─────
 const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([37.5665,126.978],16);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-  maxZoom:20,subdomains:'abcd',
-  attribution:'© OpenStreetMap · © CARTO'
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19,className:'dark-tiles',
+  attribution:'© OpenStreetMap contributors'
 }).addTo(map);
 const todayLayer=L.layerGroup().addTo(map);
 const viewLayer=L.layerGroup().addTo(map);
