@@ -3,20 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#f4f5f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>DogEarth · 실제 지도 테스트</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-:root{--bg:#0f1115;--card:rgba(20,22,28,.92);--line:#2a2e38;--tx:#eef0f4;--sub:#98a0ae;--blue:#2D55E8;--blue2:#5b7cff;--orange:#E0782A;--red:#e5484d;--green:#2fb36d}
+:root{--bg:#f4f5f7;--card:rgba(255,255,255,.94);--line:#e3e6eb;--tx:#141619;--sub:#6b7280;--blue:#2D55E8;--blue2:#5b7cff;--orange:#E0782A;--red:#e5484d;--green:#2fb36d}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;overflow:hidden}
 #map{position:fixed;inset:0}
-.leaflet-container{background:#1a1d24}
-.dark-tiles{filter:invert(1) hue-rotate(185deg) brightness(.92) contrast(.88) saturate(.6)}
+.leaflet-container{background:#eef0f2}
+.dark-tiles{filter:saturate(.75) brightness(1.02)}
 .top{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);z-index:500;display:flex;gap:8px;align-items:center}
+.brand,.gps,.ibtn{box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .brand{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-weight:700;letter-spacing:-.2px;backdrop-filter:blur(8px)}
 .brand b{color:var(--blue2)}
 .gps{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 10px;font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
@@ -24,7 +25,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 .dot.ok{background:var(--green)}.dot.mid{background:#e3b341}.dot.bad{background:var(--red)}
 .sp{flex:1}
 .ibtn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--tx);font-size:18px;display:grid;place-items:center}
-.panel{position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:500;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px;backdrop-filter:blur(10px)}
+.panel{box-shadow:0 6px 24px rgba(0,0,0,.12);position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:500;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px;backdrop-filter:blur(10px)}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
 .big{grid-column:1/-1;font-size:44px;font-weight:800;letter-spacing:-1.5px;line-height:1}
 .big small{font-size:16px;color:var(--sub);font-weight:600;margin-left:4px}
@@ -32,13 +33,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 .st span{font-size:11px;color:var(--sub)}
 .row{display:flex;gap:8px;margin-top:12px}
 .btn{flex:1;height:52px;border-radius:14px;border:0;font-size:16px;font-weight:700;color:#fff;background:var(--blue)}
-.btn.sec{background:#262a33;color:var(--tx)}
+.btn.sec{background:#eceef2;color:var(--tx)}
 .btn.stop{background:var(--red)}
 .btn.go{background:var(--green)}
 .note{font-size:11.5px;color:var(--sub);margin-top:8px;text-align:center;line-height:1.45}
 .sheet{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.5);display:none}
 .sheet.on{display:block}
-.sheet .in{position:absolute;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:#15171d;border-radius:22px 22px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px)}
+.sheet .in{position:absolute;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px)}
 .sheet h3{margin:0 0 12px;font-size:18px}
 .day{border-top:1px solid var(--line);padding:12px 0}
 .day h4{margin:0 0 6px;font-size:14px;color:var(--sub);font-weight:600}
@@ -46,19 +47,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
 .walk .m{flex:1}
 .walk .m b{font-size:15px}
 .walk .m div{font-size:12px;color:var(--sub)}
-.chip{padding:7px 10px;border-radius:10px;background:#262a33;color:var(--tx);border:0;font-size:12.5px}
-.chip.r{color:#ff8a8d}
+.chip{padding:7px 10px;border-radius:10px;background:#eceef2;color:var(--tx);border:0;font-size:12.5px}
+.chip.r{color:#d93036}
 .sum{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:8px 0 14px}
-.sum div{background:#1d2028;border-radius:14px;padding:12px}
+.sum div{background:#f3f4f6;border-radius:14px;padding:12px}
 .sum b{display:block;font-size:22px}
 .sum span{font-size:12px;color:var(--sub)}
 .me{width:22px;height:22px;border-radius:50%;background:var(--blue2);border:3px solid #fff;box-shadow:0 0 0 6px rgba(91,124,255,.25),0 2px 8px rgba(0,0,0,.5)}
 .paw{font-size:14px;opacity:.75}
-.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:1000;background:#262a33;color:#fff;padding:9px 14px;border-radius:12px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:1000;background:#141619;color:#fff;padding:9px 14px;border-radius:12px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
 .toast.on{opacity:1}
-.leaflet-control-attribution{font-size:9px!important;background:rgba(0,0,0,.45)!important;color:#aaa!important}
-.leaflet-control-attribution a{color:#ccc!important}
+.leaflet-control-attribution{font-size:9px!important;background:rgba(255,255,255,.7)!important;color:#666!important}
+.leaflet-control-attribution a{color:#444!important}
 .leaflet-control-zoom{display:none}
+.zoom{position:fixed;right:12px;top:calc(env(safe-area-inset-top) + 62px);z-index:500;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.zoom button{width:40px;height:40px;border:0;background:transparent;color:var(--tx);font-size:22px;font-weight:500}
+.zoom button+button{border-top:1px solid var(--line)}
+.zoom .lv{font-size:10px;color:var(--sub);text-align:center;padding:2px 0;border-top:1px solid var(--line)}
+.leaflet-control-scale{margin-left:12px!important;margin-top:calc(env(safe-area-inset-top) + 62px)!important}
+.leaflet-control-scale-line{background:rgba(255,255,255,.8)!important;border-color:#555!important;color:#333!important;font-size:10px!important}
 </style>
 </head>
 <body>
@@ -71,6 +78,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:
   <button class="ibtn" id="bCenter" title="내 위치">◎</button>
   <button class="ibtn" id="bHist" title="기록">☰</button>
 </div>
+<div class="zoom"><button id="zIn">+</button><button id="zOut">−</button><div class="lv" id="zLv">17</div></div>
 
 <div class="panel">
   <div class="stats">
@@ -96,13 +104,15 @@ let walks=load(KEY,[]);           // [{id,start,end,dist,moving,pts:[[lat,lng,t]
 let cur=load(CUR,null);           // 진행 중 산책(새로고침 대비)
 
 // ───── 지도 ─────
-const map=L.map('map',{zoomControl:false,attributionControl:true}).setView([37.5665,126.978],16);
+const map=L.map('map',{zoomControl:false,attributionControl:true,zoomSnap:0.5,zoomDelta:1,wheelPxPerZoomLevel:90,minZoom:12,maxZoom:19}).setView([37.5665,126.978],17);
+L.control.scale({metric:true,imperial:false,position:'topleft'}).addTo(map);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
   maxZoom:19,className:'dark-tiles',
   attribution:'© OpenStreetMap contributors'
 }).addTo(map);
 const todayLayer=L.layerGroup().addTo(map);
 const viewLayer=L.layerGroup().addTo(map);
+map.on('zoomend',()=>{document.getElementById('zLv').textContent=(Math.round(map.getZoom()*2)/2)});
 let liveLine=L.polyline([],{color:'#5b7cff',weight:6,opacity:.95,lineCap:'round',lineJoin:'round'}).addTo(map);
 let meMarker=null, accCircle=null, follow=true;
 map.on('dragstart',()=>follow=false);
@@ -162,6 +172,7 @@ function onPos(p){
   render();
 }
 function onErr(e){
+  if(e.code!==1&&lastFix&&Date.now()-lastFix[2]<60000)return;
   setGps(null);
   const m={1:'위치 권한이 거부되었습니다. 설정 › 개인정보 › 위치 서비스에서 브라우저를 "앱을 사용하는 동안"으로 허용해 주세요.',2:'위치를 찾을 수 없습니다. 실외에서 다시 시도해 주세요.',3:'위치 응답이 늦습니다. 잠시 기다려 주세요.'}[e.code]||'위치 오류';
   $('note').textContent=m;
@@ -263,6 +274,7 @@ window.DE={
   del:id=>{if(!confirm('이 산책 기록을 삭제할까요? 되돌릴 수 없어요.'))return;walks=walks.filter(x=>x.id!==id);save(KEY,walks);viewLayer.clearLayers();drawToday();history()}
 };
 $('bHist').onclick=history;
+$('zIn').onclick=()=>map.zoomIn(1);$('zOut').onclick=()=>map.zoomOut(1);
 $('bCenter').onclick=()=>{follow=true;viewLayer.clearLayers();if(lastFix)map.setView([lastFix[0],lastFix[1]],17);else startGps()};
 
 // ───── 시작 ─────
