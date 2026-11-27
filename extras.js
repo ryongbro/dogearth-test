@@ -112,7 +112,13 @@ function tone(type,f0,f1,dur,pk){const c=ac();if(!c)return;const o=c.createOscil
 function noise(dur,fq,pk,q){const c=ac();if(!c)return;const n=Math.floor(c.sampleRate*dur),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(Math.random()<.35?1:.3);const s=c.createBufferSource();s.buffer=b;const f=c.createBiquadFilter();f.type="bandpass";f.frequency.value=fq;f.Q.value=q||1.2;const g=c.createGain(),t0=c.currentTime;env(g,t0,.005,dur,(pk||.5)*VOL);s.connect(f).connect(g).connect(c.destination);s.start(t0)}
 const BARKS={ko:["🇰🇷","멍멍",520,2,220],us:["🇺🇸","Woof",380,1,0],jp:["🇯🇵","ワンワン",600,2,200],fr:["🇫🇷","Ouaf",440,1,0],es:["🇪🇸","Guau",470,2,260],de:["🇩🇪","Wau",400,2,240],it:["🇮🇹","Bau",450,2,230],ru:["🇷🇺","Гав",360,2,250],cn:["🇨🇳","汪汪",560,2,190]};
 let rec=ld("de.praise","");
-const SND={click(){tone("square",3200,1800,.03,.55);setTimeout(()=>tone("square",2400,1200,.025,.35),35)},
+let CLKBUF=null;
+function clickBuf(c){if(CLKBUF&&CLKBUF.sampleRate===c.sampleRate)return CLKBUF;const sr=c.sampleRate,n=Math.floor(sr*.16),b=c.createBuffer(1,n,sr),d=b.getChannelData(0);
+ const hit=(t0,amp,sc)=>{const s0=Math.floor(t0*sr);const modes=[[1850*sc,.55,.010],[3150*sc,.9,.007],[4700*sc,.6,.005],[6900*sc,.35,.0035],[9800*sc,.2,.002]];const ph=modes.map(()=>Math.random()*6.28);
+  for(let i=0;s0+i<n&&i<sr*.05;i++){const t=i/sr;let v=(Math.random()*2-1)*Math.exp(-t/.0006)*1.2;modes.forEach(([f,a,tau],k)=>{v+=a*Math.sin(6.2832*f*t+ph[k])*Math.exp(-t/tau)});v+=.35*Math.sin(6.2832*210*t)*Math.exp(-t/.004);d[s0+i]+=v*amp}};
+ hit(0,1,1);hit(.072,.62,.88);let m=0;for(let i=0;i<n;i++)m=Math.max(m,Math.abs(d[i]));for(let i=0;i<n;i++)d[i]/=m||1;return CLKBUF=b}
+function playClick(c,vol){const s=c.createBufferSource();s.buffer=clickBuf(c);s.playbackRate.value=.97+Math.random()*.06;const hp=c.createBiquadFilter();hp.type="highpass";hp.frequency.value=500;const g=c.createGain();g.gain.value=vol;s.connect(hp).connect(g).connect(c.destination);s.start()}
+const SND={click(){const c=ac();if(c)playClick(c,.95)},
  squeak(){tone("sine",1400,2300,.12,.45);setTimeout(()=>tone("sine",2300,1500,.14,.4),130)},
  bag(){for(let i=0;i<7;i++)setTimeout(()=>noise(.06+Math.random()*.05,3000+Math.random()*3000,.45,.8),i*70)},
  whistle(f,dur){if(Date.now()<lock){toast("잠깐 쉬었다가 눌러 주세요 (강아지 귀 보호)");return}lock=Date.now()+900;const c=ac();if(!c)return;dur=Math.min(dur||.6,2.5);const o=c.createOscillator(),l=c.createOscillator(),lg=c.createGain(),g=c.createGain(),t0=c.currentTime;o.type="sine";o.frequency.value=f;l.frequency.value=f>10000?0:6;lg.gain.value=f*.012;l.connect(lg).connect(o.frequency);env(g,t0,.03,dur,(f>10000?.7:.35)*VOL);o.connect(g).connect(c.destination);o.start(t0);l.start(t0);o.stop(t0+dur+.1);l.stop(t0+dur+.1)},
