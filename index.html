@@ -144,7 +144,7 @@ function setGps(acc){
   const d=$('gdot'),t=$('gtxt');
   if(acc==null){d.className='dot';t.textContent='GPS 대기';return}
   d.className='dot '+(acc<=15?'ok':acc<=35?'mid':'bad');
-  t.textContent=`정확도 ±${Math.round(acc)}m`;
+  t.textContent=`±${Math.round(acc)}m`;
 }
 function onPos(p){
   const {latitude:lat,longitude:lng,accuracy:acc}=p.coords, t=p.timestamp||Date.now();
@@ -156,6 +156,7 @@ function onPos(p){
     map.setView(ll,17);
   }else{meMarker.setLatLng(ll);accCircle.setLatLng(ll).setRadius(acc)}
   if(follow)map.panTo(ll,{animate:true});
+  window.DEX&&DEX.onFix&&DEX.onFix(lat,lng,acc,t);
   if(!cur||paused)return;
   // 노이즈 필터: 정확도 40m 초과 무시, 3m 미만 이동 무시, 초속 8m 초과 튐 무시
   if(acc>40)return;
@@ -207,7 +208,7 @@ function start(){
   paused=false;follow=true;save(CUR,cur);lockOn();
   clearInterval(tick);tick=setInterval(render,1000);
   $('note').textContent='화면이 켜져 있는 동안 기록됩니다. 화면을 끄거나 다른 앱으로 가면 기록이 멈출 수 있어요.';
-  render();toast('산책을 시작했어요 🐕');
+  render();toast('산책을 시작했어요 🐕');window.DEX&&DEX.onStart&&DEX.onStart();
 }
 function pause(){cur.moving+=Date.now()-cur.resumeAt;paused=true;cur.paused=true;save(CUR,cur);render();toast('일시정지')}
 function resume(){cur.resumeAt=Date.now();paused=false;cur.paused=false;save(CUR,cur);lockOn();render()}
@@ -216,6 +217,7 @@ function end(){
   const w={id:cur.id,start:cur.start,end:Date.now(),dist:Math.round(cur.dist),moving:Math.round(cur.moving/1000),pts:cur.pts};
   clearInterval(tick);
   try{wake&&wake.release()}catch(e){};wake=null;
+  if(window.DEX&&DEX.onEnd)DEX.onEnd(w);
   if(w.pts.length>=2&&w.dist>=20){walks.push(w);save(KEY,walks);showSummary(w)}
   else toast('이동 거리가 너무 짧아 저장하지 않았어요');
   cur=null;paused=false;localStorage.removeItem(CUR);
@@ -234,6 +236,7 @@ function showSummary(w){
     <div><b>${fmtPace(w.moving,w.dist)}</b><span>평균 페이스</span></div>
     <div><b>${Math.round(w.dist/STEP).toLocaleString()}</b><span>걸음 · 🐾 ${Math.round(w.dist/STRIDE*4).toLocaleString()}</span></div>
   </div>
+  ${w.clicks&&w.clicks.length?`<div class="note" style="margin:-4px 0 10px;font-size:13px">⭐ 오늘 칭찬 ${w.clicks.length}번</div>`:''}
   <div class="row"><button class="btn sec" onclick="DE.gpx('${w.id}')">GPX 저장</button><button class="btn" onclick="DE.close()">확인</button></div>`);
   showWalk(w,false);
 }
@@ -267,6 +270,7 @@ function gpx(id){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([x],{type:'application/gpx+xml'}));
   a.download=`dogearth-${dayKey(w.start)}-${hm(w.start).replace(':','')}.gpx`;document.body.appendChild(a);a.click();a.remove();
 }
+window.DEX=window.DEX||{};Object.assign(DEX,{map,get cur(){return cur},get paused(){return paused},get lastFix(){return lastFix},get follow(){return follow},set follow(v){follow=v},toast,openSheet,walks:()=>walks,showWalk});
 window.DE={
   close:()=>{$('sheet').classList.remove('on')},
   view:id=>{const w=walks.find(x=>x.id===id);if(w){$('sheet').classList.remove('on');showWalk(w)}},
@@ -287,5 +291,8 @@ if(cur){ // 새로고침 후 이어가기
 render();
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="dogkit.js?v=4"></script>
+<script src="extras.js?v=4"></script>
 </body>
 </html>
